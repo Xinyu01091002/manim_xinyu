@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir -p projects)",
+      "Bash(mv awayday2025:*)",
+      "Bash(mv presentation_project projects/)"
+    ]
+  }
+}
