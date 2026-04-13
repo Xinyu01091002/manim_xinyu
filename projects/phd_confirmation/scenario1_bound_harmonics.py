@@ -1,11 +1,15 @@
 """
-Scenario 1 — Bound Harmonics in a Wave Group  (v4)
+Scenario 1 — Bound Harmonics in a Wave Group  (v5)
 ===================================================
-Changes from v3:
-  - JONSWAP spectrum (γ=3.3) for primary peak; Gaussian kept for harmonics
-  - Linear reference wave thicker during evolution
-  - Legend moved inside spatial axes to avoid overlap
-  - Equation area shifted down for breathing room
+Changes from v4:
+  - A reduced 0.35 → 0.20 (ε ≈ 0.30, more physically realistic)
+  - Equations labelled "(lab frame)" to avoid confusion with group-frame animation
+  - Time-evolution note rewritten in MathTex with explicit group-frame phase
+  - eq1–eq4 fade out before eq_tot is revealed (cleaner 承→合 transition)
+  - 合 (Resolution) takeaway text added at the end — the key message
+  - Time evolution extended to t=15 (run_time=12) for multiple visible oscillations
+  - self.wait() durations increased throughout for better pacing
+  - Legend shifted inward to avoid axis-edge overlap
 """
 
 from manim import *
@@ -15,11 +19,11 @@ g = 9.81
 
 # ── Physical parameters ────────────────────────────────────────────────────────
 K0      = 1.5           # carrier wavenumber  [rad/m]
-A       = 0.35          # amplitude           [m]   → ε = A·K0 ≈ 0.525
+A       = 0.20          # amplitude           [m]   → ε = A·K0 ≈ 0.30
 SIGMA_X = 4.0           # group width (1σ)    [m]
 OMEGA0  = np.sqrt(g * K0)
 CG      = OMEGA0 / (2.0 * K0)
-EPS     = A * K0        # steepness ≈ 0.525
+EPS     = A * K0        # steepness ≈ 0.30
 
 # Colours
 C1  = BLUE
@@ -115,7 +119,7 @@ class BoundHarmonicsIntro(Scene):
             y_axis_config={"numbers_to_include": [-0.25, 0.0, 0.25]},
         ).to_edge(LEFT, buff=0.85).shift(UP * 1.2)
 
-        head_s = Text("Spatial  (group frame)", font_size=15, color=GREY_B).next_to(ax_s, UP, buff=0.15)
+        head_s = Text("Spatial  (group frame)", font_size=15, color=GREY_B).next_to(ax_s, UP, buff=0.30)
         lab_xs = ax_s.get_x_axis_label(MathTex("x\\ (\\mathrm{m})", font_size=17))
         lab_ys = ax_s.get_y_axis_label(MathTex("\\eta\\ (\\mathrm{m})", font_size=17))
 
@@ -158,9 +162,13 @@ class BoundHarmonicsIntro(Scene):
                 lag_ratio=0.35,
             )
         )
-        self.wait(0.3)
+        self.wait(1.0)   # let audience orient to the two-panel layout
 
         # ══ Equation area (bottom half) ════════════════════════════════════════
+        # Label clarifying equations are written in lab-frame form
+        eq_frame_note = Text("equations in lab frame  (t = 0 shown above)",
+                             font_size=12, color=GREY_C)
+
         EQ_TOP = -0.70
         EQ_GAP =  0.55
 
@@ -184,6 +192,8 @@ class BoundHarmonicsIntro(Scene):
             font_size=22, color=C3P,
         ).move_to([0, EQ_TOP - 3 * EQ_GAP, 0])
 
+        eq_frame_note.next_to(eq1, UP, buff=0.18)
+
         divider = Line(LEFT * 5.0, RIGHT * 5.0, stroke_width=1, color=GREY_D)
         divider.move_to([0, EQ_TOP - 3.55 * EQ_GAP, 0])
 
@@ -196,7 +206,12 @@ class BoundHarmonicsIntro(Scene):
             MathTex(r"\eta_2^-",  font_size=24, color=C2M),
             MathTex(r"+",         font_size=24),
             MathTex(r"\eta_3^+",  font_size=24, color=C3P),
-        ).arrange(RIGHT, buff=0.14).move_to([0, EQ_TOP - 4.15 * EQ_GAP, 0])
+        ).arrange(RIGHT, buff=0.14).move_to([-2.8, EQ_TOP - 3.85 * EQ_GAP, 0])
+
+        eq_nl = MathTex(
+            r"\eta_{\rm nl} = \eta_1 + \eta_2^+ + \eta_2^- + \eta_3^+",
+            font_size=24, color=YELLOW,
+        ).next_to(eq_tot, RIGHT, buff=0.45)
 
         # ══ ① Linear wave group ═══════════════════════════════════════════════
         c1   = ax_s.plot(lambda x: geta1(x, 0),  x_range=[-10, 10, 0.04], color=C1,    stroke_width=2.5)
@@ -206,8 +221,8 @@ class BoundHarmonicsIntro(Scene):
 
         self.play(Create(c1), Create(envu), Create(envl))
         self.play(Create(pk1), Write(lbl_k0))
-        self.play(Write(eq1))
-        self.wait(1.5)
+        self.play(Write(eq_frame_note), Write(eq1))
+        self.wait(2.0)   # let audience read the equation and match it to the wave
 
         # ══ ② 2nd-order super-harmonic ════════════════════════════════════════
         c2p  = ax_s.plot(lambda x: geta2p(x, 0), x_range=[-10, 10, 0.04], color=C2P,  stroke_width=2.0)
@@ -215,7 +230,7 @@ class BoundHarmonicsIntro(Scene):
 
         self.play(Create(c2p), Create(pk2p), Write(lbl_2k0))
         self.play(Write(eq2))
-        self.wait(1.5)
+        self.wait(2.0)   # note the new spectral peak at 2k₀
 
         # ══ ③ 2nd-order set-down ══════════════════════════════════════════════
         c2m  = ax_s.plot(lambda x: geta2m(x),    x_range=[-10, 10, 0.04], color=C2M,  stroke_width=2.0)
@@ -223,7 +238,7 @@ class BoundHarmonicsIntro(Scene):
 
         self.play(Create(c2m), Create(pk2m), Write(lbl_setd))
         self.play(Write(eq3))
-        self.wait(1.5)
+        self.wait(2.0)   # negative depression under the group is visible
 
         # ══ ④ 3rd-order super-harmonic ════════════════════════════════════════
         c3p  = ax_s.plot(lambda x: geta3p(x, 0), x_range=[-10, 10, 0.04], color=C3P,  stroke_width=1.8)
@@ -231,25 +246,31 @@ class BoundHarmonicsIntro(Scene):
 
         self.play(Create(c3p), Create(pk3p), Write(lbl_3k0))
         self.play(Write(eq4))
-        self.wait(1.5)
+        self.wait(2.0)   # small 3rd-order peak visible in spectrum
 
         # ══ ⑤ Show total wave ═════════════════════════════════════════════════
         c_tot = ax_s.plot(lambda x: geta_tot(x, 0), x_range=[-10, 10, 0.04], color=WHITE, stroke_width=2.8)
 
+        # Fade individual component curves and equations; reveal total
         self.play(
             FadeOut(c1), FadeOut(envu), FadeOut(envl),
             FadeOut(c2p), FadeOut(c2m), FadeOut(c3p),
         )
         self.play(Create(c_tot))
-        self.play(Create(divider), Write(eq_tot))
-        self.wait(1.5)
+        self.wait(1.0)   # show crests sharper, troughs flatter before the sum equation
+        self.play(Create(divider), Write(eq_tot), Write(eq_nl))
+        self.wait(2.5)   # let audience appreciate the full superposition
 
         # ══ ⑥ Time evolution in group frame ═══════════════════════════════════
-        note = Text(
-            "Envelope fixed  —  carrier oscillates at ω₀/2  (group frame)",
+        # Note: in the group frame the carrier Doppler-shifts to k₀x − (ω₀/2)t,
+        # so the envelope stays fixed while the carrier oscillates beneath it.
+        note = MathTex(
+            r"\text{Group frame: envelope fixed,}\quad"
+            r"\theta_g = k_0 x - \tfrac{\omega_0}{2}t",
             font_size=16, color=YELLOW,
         ).next_to(eq_tot, DOWN, buff=0.22)
         self.play(Write(note))
+        self.wait(1.0)
 
         t_val = ValueTracker(0.0)
 
@@ -273,7 +294,7 @@ class BoundHarmonicsIntro(Scene):
             x_range=[-10, 10, 0.05], color=WHITE, stroke_width=2.8,
         ))
 
-        # Legend — placed inside ax_s, upper-right quadrant (clear of envelope peak)
+        # Legend — placed inside ax_s, upper-right (shifted inward from edge)
         legend = VGroup(
             VGroup(Line(LEFT * 0.22, RIGHT * 0.22, color=WHITE, stroke_width=2.8),
                    Text("nonlinear", font_size=11, color=WHITE)).arrange(RIGHT, buff=0.06),
@@ -281,15 +302,26 @@ class BoundHarmonicsIntro(Scene):
                                   num_dashes=5, dashed_ratio=0.5),
                    Text("linear  η₁", font_size=11, color=C1)).arrange(RIGHT, buff=0.06),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.10)
-        legend.move_to(ax_s.c2p(6.8, 0.37))
+        legend.move_to(ax_s.c2p(5.5, 0.37))   # shifted inward from 6.8 to 5.5
 
         self.remove(c_tot)
         self.add(s_envu, s_envl, s_sd, live_eta1, live_tot)
         self.play(FadeIn(legend))
-        self.play(t_val.animate.set_value(5.0), run_time=7, rate_func=linear)
         self.wait(0.5)
+        # Run ~2.5 carrier periods so the audience can see the locked co-travel clearly
+        self.play(t_val.animate.set_value(15.0), run_time=12, rate_func=linear)
+        self.wait(1.0)
 
-        # Highlight summary equation
-        box = SurroundingRectangle(eq_tot, color=YELLOW, buff=0.10, corner_radius=0.07)
+        # ══ ⑦ 合 — Resolution: highlight sum and deliver takeaway ══════════════
+        box = SurroundingRectangle(VGroup(eq_tot, eq_nl), color=YELLOW, buff=0.10, corner_radius=0.07)
         self.play(Create(box))
-        self.wait(2)
+        self.wait(1.0)
+
+        takeaway = VGroup(
+            Text("Bound harmonics  ≠  free waves", font_size=19, color=YELLOW, weight=BOLD),
+            Text("They do not satisfy the dispersion relation independently —", font_size=16, color=GREY_A),
+            Text("they are slaved to the primary wave group.", font_size=16, color=GREY_A),
+        ).arrange(DOWN, buff=0.14, aligned_edge=LEFT)
+        takeaway.to_corner(DR, buff=0.45)
+        self.play(Write(takeaway))
+        self.wait(4.0)   # hold on the key message
