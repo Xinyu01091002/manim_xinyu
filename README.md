@@ -34,3 +34,20 @@ manim -qh scenario0_why_nonlinear.py WhyNonlinearWaves
 ```
 
 This keeps the render outputs under `projects/phd_confirmation/media/` and matches the current presentation workflow.
+
+For `projects/creamer_transform/`, the current workflow is:
+
+```bash
+cd projects/creamer_transform
+manim -ql scenario0_what_is_creamer.py WhatIsCreamer
+manim -ql scenario1_why_h3_removable.py WhyH3Removable
+manim -ql scenario2_how_to_absorb_h3.py HowToAbsorbH3
+manim -ql scenario3_1d_remapping.py OneDDeepWaterRemapping
+```
+
+This project is a staged visualization of the Creamer transform:
+
+- `scenario0`: what Creamer is trying to improve
+- `scenario1`: why deep water singles out `H_3`
+- `scenario2`: how the canonical transform absorbs `H_3`
+- `scenario3`: why the 1D deep-water limit becomes a horizontal remapping
