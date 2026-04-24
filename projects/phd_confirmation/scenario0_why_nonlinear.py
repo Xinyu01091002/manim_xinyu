@@ -214,7 +214,7 @@ class WhyNonlinearWaves(Scene):
                         x_range=[-10, 10, 0.05], color=C_NL, stroke_width=2.5)
 
         nl_eq = MathTex(
-            r"\eta_{\rm nl}:\ \omega_{\rm NL}>\omega_0\ \mathrm{(slightly)}",
+            r"\eta_{\rm nl}=\eta_{\rm lin}+\mathrm{small\ nonlinear\ correction}",
             font_size=28, color=C_NL,
         ).move_to([0, -1.46, 0])
 
@@ -247,20 +247,26 @@ class WhyNonlinearWaves(Scene):
 
         # ══ ④ Spectral fingerprint ════════════════════════════════════════════
         spec_2p_c = ax_k.plot(spec_2p, x_range=[0.05, 5.5, 0.02],
-                               color=C2P, stroke_width=2.5)
+                               color=C2P, stroke_width=2.1, stroke_opacity=0.82)
         spec_3p_c = ax_k.plot(spec_3p, x_range=[0.05, 5.5, 0.02],
-                               color=C3P, stroke_width=2.5)
+                               color=C3P, stroke_width=2.1, stroke_opacity=0.82)
         spec_sd_c = ax_k.plot(spec_sd, x_range=[0.01, 3.0,  0.02],
-                               color=C2M, stroke_width=2.5)
+                               color=C2M, stroke_width=2.1, stroke_opacity=0.82)
+        spectral_hint = VGroup(
+            T("extra nonlinear", font_size=17, color=GREY_A),
+            T("spectral energy", font_size=17, color=GREY_A),
+        ).arrange(DOWN, buff=0.05, aligned_edge=LEFT)
+        spectral_hint.move_to(ax_k.c2p(3.85, 1.65))
         self.play(
             LaggedStart(
-                AnimationGroup(Create(spec_2p_c), Write(lbl_2k0)),
-                AnimationGroup(Create(spec_sd_c), Write(lbl_sd)),
-                AnimationGroup(Create(spec_3p_c), Write(lbl_3k0)),
+                Create(spec_2p_c),
+                Create(spec_sd_c),
+                Create(spec_3p_c),
                 lag_ratio=0.4,
             )
         )
-        self.wait(2.8)
+        self.play(Write(spectral_hint))
+        self.wait(2.2)
 
         # ══ ⑤ Animated wave + growing time series ════════════════════════════
         # Clear the annotation / equation overlays and the envelope guides
@@ -397,6 +403,7 @@ class WhyNonlinearWaves(Scene):
             ax_k, head_k, lab_xk, lab_yk,
             spec_lin_c, spec_2p_c, spec_3p_c, spec_sd_c,
             lbl_k0, lbl_2k0, lbl_3k0, lbl_sd,
+            spectral_hint,
         )
 
         self.play(FadeOut(spec_group), FadeOut(probe_vline), FadeOut(probe_lbl_s))
@@ -443,7 +450,7 @@ class WhyNonlinearWaves(Scene):
         ).arrange(DOWN, buff=0.16, aligned_edge=LEFT)
 
         bridge = T(
-            "What generates these extra components?  ->  Bound harmonics",
+            "What are these extra components?  ->  Bound harmonics",
             font_size=15, color=GREY_B,
         )
 

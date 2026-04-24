@@ -39,6 +39,22 @@ Planned focus:
 - how the 1D remapping picture creates bound harmonics during reconstruction
 - what becomes nontrivial in finite depth
 
+Local Windows environment for this repo:
+
+- Preferred Manim executable on this machine:
+  `C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim`
+- Matching Python for helper scripts:
+  `C:\Users\spet5947\AppData\Local\anaconda3\python.exe`
+- The default shell `python` / `py` may point to other installs that do not have Manim.
+- TeX rendering works when `C:\texlive\2023\bin\windows` is on `PATH`.
+- `build_full_video.ps1` uses the same Anaconda Python and can resolve `ffmpeg` from `imageio-ffmpeg` if needed.
+
+If `manim` is not on `PATH`, call it explicitly:
+
+```powershell
+& "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim" scenario0_what_is_creamer.py WhatIsCreamer
+```
+
 Suggested render pattern once scene files exist:
 
 ```powershell
@@ -56,6 +72,15 @@ manim -ql scenario2_how_to_absorb_h3.py HowToAbsorbH3
 manim -ql scenario3_1d_remapping.py OneDDeepWaterRemapping
 ```
 
+Build a stitched 720p video:
+
+```powershell
+cd c:\Research\manim\projects\creamer_transform
+.\build_full_video.ps1 -RenderMissing
+```
+
+This selects the best available render for each implemented scene, renders missing low-resolution-only scenes to `720p30` when needed, and writes `media/videos/CreamerTransform_full_720p.mp4`.
+
 High-quality renders:
 
 ```powershell
@@ -67,5 +92,5 @@ manim -qh scenario1_why_h3_removable.py WhyH3Removable
 Notes:
 
 - Run Manim from this project directory so outputs stay under this project's own `media/` tree.
-- On this Windows setup, TeX rendering works when `C:\texlive\2023\bin\windows` is on `PATH`.
+- If `build_full_video.ps1` cannot find `ffmpeg`, install it into the same Anaconda environment with `C:\Users\spet5947\AppData\Local\anaconda3\python.exe -m pip install imageio-ffmpeg`.
 - During iteration, rendering one scene at a time is preferred. Manim will reuse cache for unchanged animations.

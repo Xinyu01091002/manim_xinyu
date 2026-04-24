@@ -1,0 +1,1438 @@
+%\documentclass[lineno]{jfm}
+\documentclass[lineno]{JFM-FLM_Au}
+%\usepackage{showframe}
+% \usepackage[section]{placeins}
+\usepackage{hyperref}
+\usepackage[noabbrev]{cleveref}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{siunitx}
+\sisetup{detect-all=true, table-number-alignment=center}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\DeclareMathOperator{\csch}{csch}
+%The below two lines are for temploariy use only, please change when publish
+% \raggedbottom
+\allowdisplaybreaks[2]
+% For adding line numbers
+% \usepackage[mathlines]{lineno}
+
+\lefttitle{Liu et al.}
+\righttitle{Journal of Fluid Mechanics}
+
+\title{On estimating superharmonic bound waves for unidirectional water waves}
+
+\author{Xinyu Liu\aff{1}, Tianning Tang\aff{1,2}, Paul H Taylor\aff{3},  Wouter Mostert\aff{1} \and Thomas A A Adcock\aff{1}}
+
+\affiliation{\aff{1}Department of Engineering Science, University of Oxford, Oxford, United Kingdom
+\aff{2}Department of Mechanical and Aerospace Engineering, University of Manchester, Manchester, United Kingdom
+\aff{3}School of Earth and Oceans, University of Western Australia,  Australia}
+
+
+\corresau{Xinyu Liu, xinyu.liu2@eng.ox.ac.uk}
+
+\begin{document}
+\maketitle
+% Add on 20260109 to fix the line number issue
+\linenumbers
+\begin{abstract}
+This paper develops an accurate approximate approach to evaluating superharmonic bound waves associated with surface gravity waves. At present, exact approaches exist for second and third order irregular multidirectional waves, however, for higher orders only results for unidirectional monochromatic waves exist. Further, the computational demands of the exact formulations, particularly at third order makes this calculation impractical for many applications involving realistic broadband wave groups. We introduce a variable-wavenumber approximation (VWA) for the superharmonic, which yields a convolutionally separable structure suitable for FFT-based evaluation. This formulation allows superharmonic interactions of arbitrary order to be computed efficiently using convolution operations, reducing the computational cost to $\mathcal{O}(N\log N)$ and avoiding the combinatorial growth associated with exact multi-dimensional kernel evaluation. The method is validated against exact interaction theory at second and third order and against fully nonlinear simulations at higher orders. The approximation is exact for deep-water unidirectional waves and remains highly accurate for intermediate depths around $kd \sim 1$. The formulation therefore, provides an efficient framework for evaluating nonlinear surface properties for gravity waves in a wide range of ocean engineering applications.
+\end{abstract}
+
+\begin{keywords}
+
+\end{keywords}
+
+%{\bf MSC Codes }  {\it(Optional)} Please enter your MSC Codes here
+
+\section{Introduction}
+\label{sec:introduction}
+
+The nonlinear dynamics of ocean waves can generally be separated into two parts. Firstly, we have the free waves which move according to the dispersion relation. Secondly, we have ``bound'' waves that are slaved to the underlying free waves. When investigating waves scientifically, we often want to separate these or be able to calculate one from the other. This paper considers the superharmonic bound waves and develops a depth-dependent kernel substitution for evaluating these.
+
+There are multiple reasons for wishing to estimate bound waves. \cite{madsen2012third} note that these are important when initialising simulations or making waves in the laboratory (see, for instance \cite{orszaghova2014importance}). Engineers are interested in bound harmonics because of the role they play in crest statistics \citep{forristall2000wave}. The bound waves can be used to estimate parameters such as directional spreading \citep{adcock2009estimating}, and they impact pollutant dispersal in the ocean \citep{van2015estimates}.
+
+In principle, we could use the work of Zakharov to tackle the bound wave problem. However, in practice, this proves difficult because of its inherent narrow-band assumption and prohibitive computational cost, and authors have therefore tended to build on the approach of \cite{stokes1847theory}. In this approach, a fundamental sinusoidal wave is assumed to have harmonics and the magnitude of these is determined by applying a Taylor expansion of the free-surface boundary conditions. Many authors have taken this approach. For a monochromatic wave, different assumptions have led to slightly different results (e.g. \cite{fenton1985fifth,zhao2022stokes,fang_theory_2023}). The original Stokes wave in deep water was given by
+\begin{equation}
+\begin{aligned}
+\eta(x, t)= & A \cos (k x-\omega t)+\left(\frac{1}{2} A^2 k+\frac{17}{24} A^4 k^3\right) \cos 2(k x-\omega t) \\
+& +\frac{3}{8} A^3 k^2 \cos 3(k x-\omega t)+\frac{1}{3} A^4 k^3 \cos 4(k x-\omega t).
+\end{aligned}
+\end{equation}
+where $A$ is the wave amplitude, $k$ is the wavenumber, and $\omega$ is the angular frequency and only the dominant superharmonic terms are included.\footnote{All subharmonic terms, which are not the main focus of the present paper, are ignored here.}
+
+In the real ocean, waves are polychromatic, so it is necessary to calculate interactions between different frequencies. Interacting waves at second-order were tackled for deep water by \citet{longuet1962resonant} and in finite depth by \cite{sharma1981second,dalzell1999note,forristall2000wave}. At the third order, subharmonic contributions are complicated by resonant interactions; these have been treated within perturbation theory for multi-component wave fields \citep{madsen2006third,madsen2012third}, while the homotopy analysis method provides an alternative analytic route to resonant wave-wave interaction problems \citep{xu_steady-state_2012,liao_homotopy_2011}. Rather than starting from the individual waves, a similar approach can be used on the complex wave envelope. Narrow-banded predictions of bound waves occur in the non-linear Schr\"{o}dinger equation framework (see \cite{trulsen1996modified}). These are much quicker to compute than simply summing components and have satisfactory accuracy for many applications \citep{adcock2016fast}. The recent work by \cite{li2021three} pushes the bandwidth limit on envelope equations. In these envelope models, there is an explicit bandwidth limitation. However, there is also an implicit limitation in bandwidth to the calculation of interactions between components in the Dean \& Sharma approach: the results are clearly inaccurate if used to calculate the interaction between components with very different frequencies. Indeed, in the extreme of a long wave interacting with a short wave, then the dynamics are different \citep{longuet1987propagation}. An approach that captures both effects is the Creamer transform \citep{creamer1989improved}, although only for deep unidirectional waves. For these, the Creamer transform does appear to be exact for the superharmonic term (to arbitrary order), although not correct for the subharmonics (see Appendix \ref{appA}). %For instance, it captures the superharmonic (22) and (33) terms in equation \ref{Stokes} correctly but not the subharmonic (31) term and continues this pattern for higher order terms. Finally we note that significant work has been done on the second order return current because of its importance in pollutant transport. \cite{calvert2019laboratory} gives a summary of these.
+
+In the following, we consider only the superharmonic bound-wave contributions. Superharmonic and subharmonic contributions may both be important depending on the application. However, superharmonics appear to be a local wave property, whereas subharmonics are non-local (see equations 3.11 \& 3.13c in \cite{li2021three}). The corresponding analysis and treatment are therefore also distinct, and the present paper focuses on the superharmonic contributions.
+
+
+% Motivated by the long-standing need for computationally efficient yet practically accurate nonlinear wave predictions in engineering applications % (e.g.\ reduced-order models in coastal engineering; \citealp{wei_fully_1995})
+% , the present paper develops an alternative approach for evaluating superharmonic bound waves that is fast to compute yet sufficiently accurate for practical use. We compare this to theory and to existing theories and numerical simulations, which solve the fully non-linear potential flow equations. As such, we assess the limitations of our approach, exploring bandwidth and depth impacts. After developing and verifying our theory in \cref{sec:secondorderresult,sec:thirdorderresult}, we then consider higher orders successively. We focus on the free surface and the velocity potential at the free surface as these are often the key parameters for practical calculations.
+% %In the present paper our goal is to look at pragmatic ways in which to calculate bounds waves in a computationally fast manner. For several of the applications above computational time is important and an accurate but fast method of evaluating bound waves may be more desirable than a slower exact approach.x
+
+Motivated by the need for computationally tractable yet physically consistent nonlinear wave predictions in engineering applications, the present paper develops a depth-controlled reduction of finite-depth superharmonic interaction theory. Rather than evaluating component-resolved nonlinear interaction coefficients explicitly, we introduce a Stokes-informed wavenumber parametrisation that captures the dominant depth-dependent kernel structure while preserving the phase matching of the superharmonic contributions.
+
+The resulting Variable Wavenumber Approximation (VWA) achieves near component-resolved agreement in deep water and maintains good performance across a broad range of depths and spectral bandwidths, while reducing the computational scaling from $\mathcal{O}(N_c^n)$ at order $n$ to $\mathcal{O}(N_c\log N_c)$, where $N_c$ is the number of spectral component. After developing and verifying the formulation in \cref{sec:secondorderresult,sec:thirdorderresult}, we examine its behaviour at higher orders and assess its limitations with respect to depth and bandwidth. We focus on the free surface and the velocity potential at the free surface, as these quantities are central to practical bound wave estimation and provide sufficient information to start fully nonlinear spectral time-marching schemes.
+
+Although the greatest benefit of VWA is expected for directional waves, where the computation of exact results is most demanding, the present paper is restricted to uni-directional waves. While we have separately extended the approach to waves with moderate directional spreading with good results, we focus in the present paper on the theory which is most clearly communicated through unidirectional analysis.
+
+
+\section{Mathematical Formulation and Methodology}
+\subsection{Problem definition}
+\label{sec:problemdefinition}
+
+ We consider inviscid, incompressible, irrotational surface gravity waves over a horizontal impermeable bottom. A Cartesian coordinate system $(x,z)$ is adopted with the still-water level at $z=0$ and the bottom at $z=-d$. The velocity potential $\phi(x,z,t)$ satisfies Laplace's equation in the fluid domain and is subject to the classic boundary conditions found in standard text books \citep[Sec.~1.1]{meiTheoryApplicationsOcean2017};
+\citep[Sec.~2.1]{dingemansWaterWavePropagation1997}.
+% \begin{equation}\label{laplace}
+% \nabla^{2}\phi=0,
+% \qquad -d \le z \le \eta(x,t),
+% \end{equation}
+% where $\eta(x,t)$ is the free-surface elevation and $\nabla=(\partial_x,\partial_z)$.
+
+% At the free surface $z=\eta(x,t)$, the dynamic and kinematic boundary conditions (with atmospheric pressure and negligible surface tension) are
+% \begin{subequations}\label{method:NLBCs}
+% \begin{align}
+% \phi_t+\tfrac12|\nabla\phi|^2+g\eta&=0, \qquad z=\eta(x,t), \label{method:dynamic}\\
+% \eta_t+\phi_x\,\eta_x-\phi_z&=0, \qquad z=\eta(x,t), \label{method:kinematic}
+% \end{align}
+% \end{subequations}
+% together with the no-penetration condition at the bottom,
+% \begin{equation}\label{method:bottom}
+% \phi_z=0,\qquad z=-d.
+% \end{equation}
+
+
+\subsection{Linear wave group representation and perturbation structure}
+
+We adopt the standard perturbation expansion
+\begin{subequations}\label{method:perturbationformsolution}
+\begin{align}
+\eta &= \sum_{r=1}^{\infty} \varepsilon^r \eta^{(r)}, \\
+\phi &= \sum_{r=1}^{\infty} \varepsilon^r \phi^{(r)},
+\end{align}
+\end{subequations}
+where $\varepsilon$ denotes a formal ordering parameter and the superscript $(r)$ indicates perturbation order.
+
+Rather than considering a monochromatic wave, we take the linear solution to be a broadband unidirectional wave group represented by its Fourier integrals,
+\begin{subequations}\label{method:linearsolution}
+\begin{align}
+\eta^{(1)}(x,t)
+&=\Re\!\left\{\int_{0}^{\infty} a(k)\,e^{i\theta(k)}\,\mathrm{d}k \right\}, \\
+\phi^{(1)}(x,z,t)
+&=\Re\!\left\{\int_{0}^{\infty} 
+\frac{g}{\omega(k)}\,a(k)\,
+\frac{\cosh k(z+d)}{\cosh kd}\,
+e^{i\theta(k)}\,\mathrm{d}k \right\},
+\end{align}
+\end{subequations}
+with phase $\theta(k)=kx-\omega(k)t$ and dispersion relation
+\[
+\omega^2=gk\tanh(kd).
+\]
+
+Higher-order bound harmonics arise from nonlinear interactions among the components of this linear spectrum.
+
+\subsection{Second-order superharmonic surface elevation: exact structure and VWA}
+
+
+Consider a unidirectional wave group composed of $N_c$ linear components,
+\begin{equation}
+\eta^{(11)}(x,t)
+=
+\sum_{m=1}^{N_c}
+a_m \cos(\theta_m),
+\qquad
+\theta_m = k_m x - \omega_m t.
+\end{equation}
+Quadratic nonlinear interactions generate a second-order superharmonic contribution at the sum phase
+\[
+\theta_{m+n} = \theta_m + \theta_n .
+\]
+In finite depth, the exact second-order superharmonic free-surface elevation may be written in the fully component-resolved form
+\begin{equation}\label{method:eta22_exact_clean}
+\eta^{(22)}_{\mathrm{exact}}(x,t)
+=
+\sum_{m=1}^{N_c}\sum_{n=1}^{N_c}
+a_m a_n\,
+G_{m+n}(k_m,k_n)\,
+\cos(\theta_m+\theta_n),
+\end{equation}
+where $G_{m+n}(k_m,k_n)$ is the dimensional finite-depth interaction kernel. Here we follow the notation of  \cite{madsen2006third,madsen2012third}, although their results are consistent with earlier work cited in the introduction. 
+The kernel depends explicitly on the interacting pair through the combination wavenumber $k_{m+n}=k_m+k_n$, the combination frequency $\omega_{m+n}=\omega_m+\omega_n$ and associated depth factors.
+
+Equation~\eqref{method:eta22_exact_clean} makes explicit that the exact theory is fully component-resolved and requires $\mathcal{O}(N_c^2)$ operations at second order at each spatial and temporal point $(x,t)$.
+
+
+The Variable Wavenumber Approximation replaces the pair-dependent kernel
+$G_{m+n}(k_m,k_n)$ by a symmetric surrogate constructed from the monochromatic (self-interaction) coefficients,
+\begin{equation}\label{method:VWA_kernel_clean}
+G_{m+n}(k_m,k_n)
+\;\approx\;
+\widetilde{G}_{m+n}(k_m,k_n)
+=
+\frac12\Big[
+G_{2n}(k_m)+G_{2n}(k_n)
+\Big],
+\end{equation}
+where $G_{nn}(k_n,k_n)=G_{2n}(k_n)$ denotes second order surface elevation for the superharmonic \citep{fenton1985fifth,zhao2022stokes}.
+Viewed in the $(k_m,k_n)$ interaction plane, the VWA replaces the full pairwise kernel surface by the symmetric average of two one-dimensional self-interaction traces associated with $k_m$ and $k_n$. This preserves the $m\leftrightarrow n$ symmetry while avoiding explicit evaluation over the full $N_c\times N_c$ interaction grid.
+
+Substituting \eqref{method:VWA_kernel_clean} into \eqref{method:eta22_exact_clean} gives
+\begin{align}
+\eta^{(22)}_{\mathrm{VWA}}
+&=
+\frac12
+\sum_{m,n}
+a_m a_n
+\Big[
+G_{2n}(k_m)+G_{2n}(k_n)
+\Big]
+\cos(\theta_m+\theta_n).
+\end{align}
+Introducing the complex representation
+\[
+\cos(\theta_m+\theta_n)
+=
+\Re\{e^{i(\theta_m+\theta_n)}\},
+\]
+we obtain
+\begin{align}
+\eta^{(22)}_{\mathrm{VWA}}
+&=
+\Re\left\{
+\frac12
+\sum_{m,n}
+a_m a_n
+\Big[
+G_{2n}(k_m)+G_{2n}(k_n)
+\Big]
+e^{i(\theta_m+\theta_n)}
+\right\}.
+\end{align}
+
+The double sum separates algebraically\footnote{At third order and above, several equivalent algebraic decompositions of the multi-index sums are possible. These lead to similar kernel approximations while retaining the $\mathcal{O}(N\log N)$ computational scaling. For clarity, only one representative form is presented here.},
+\begin{align}\label{method:eta22_VWA_separated}
+\eta^{(22)}_{\mathrm{VWA}}
+&=
+\Re\left\{
+\left(
+\sum_m G_{2n}(k_m)a_m e^{i\theta_m}
+\right)
+\left(
+\sum_n a_n e^{i\theta_n}
+\right)
+\right\}.
+\end{align}
+
+Equation~\eqref{method:eta22_VWA_separated} shows that the explicit pairwise summation over all $(m,n)$ combinations is replaced by two one-dimensional spectral syntheses followed by a pointwise product, so that the quadratic kernel evaluation is avoided.
+
+Defining the analytic signal of the linear surface elevation
+\[
+\eta_a^{(11)}(x,t)
+=
+\sum_n a_n e^{i\theta_n},
+\]
+and its kernel-weighted counterpart
+\[
+\eta_{a,G}^{(11)}(x,t)
+=
+\sum_m G_{2n}(k_m)a_m e^{i\theta_m},
+\]
+the VWA reconstruction takes the compact product form
+\begin{equation}\label{method:eta22_VWA_final}
+\eta^{(22)}_{\mathrm{VWA}}(x,t)
+=
+\Re\left\{
+\eta_{a,G}^{(11)}(x,t)\,
+\eta_a^{(11)}(x,t)
+\right\}.
+\end{equation}
+The accuracy of the second-order VWA is assessed in \cref{method:2nd_kernel_comparison,sec:secondorderresult}.
+
+\subsection{Second-order superharmonic surface velocity potential}
+
+In addition to the free-surface elevation $\eta$, many numerical wave models are formulated in terms of the surface velocity potential
+\begin{equation}
+\phi_s(x,t) := \phi(x,\eta(x,t),t),
+\end{equation}
+that is, the velocity potential evaluated at the nonlinear free surface.
+
+The pair $(\eta,\phi_s)$ forms a canonical set of surface variables in potential-flow theory. 
+In particular, higher-order initialisation of fully nonlinear simulations, as well as many time-marching schemes based on Zakharov-type and other fully nonlinear spectral formulations \citep{craigNumericalSimulationGravity1993,batemanCalculationWaterParticle2003}, are expressed directly in terms of $\eta$ and $\phi_s$. 
+Accurate reconstruction of bound-harmonic contributions to $\phi_s$ is therefore essential when prescribing consistent nonlinear initial conditions or performing higher-order wave--structure interaction calculations.
+
+At second order, the superharmonic surface velocity potential may be obtained from the Taylor expansion
+\[
+\phi_s
+=
+\phi + \eta\,\partial_z \phi + \cdots
+\quad \text{at } z=0,
+\]
+which yields, after extracting only the superharmonic component,
+\begin{equation}
+\phi_s^{(22)}
+=
+\left(
+\phi^{(22)}
++
+\eta^{(11)}\partial_z\phi^{(11)}
+\right)^{(22)}.
+\end{equation}
+where $(\cdot)^{(22)}$ denotes projection onto the superharmonic component at frequency $2\omega$, i.e.\ the coefficient multiplying $\sin(2\theta)$ in the monochromatic expansion.
+For a wave group comprising $N_c$ components, the exact second-order superharmonic surface potential admits the fully component-resolved representation
+\begin{equation}\label{method:phis22_exact_clean}
+\phi^{(22)}_{s,\mathrm{exact}}(x,t)
+=
+\sum_{m=1}^{N_c}\sum_{n=1}^{N_c}
+a_m a_n\,
+\mu_{m+n}(k_m,k_n)\,
+\sin(\theta_m+\theta_n),
+\end{equation}
+where $\mu_{m+n}(k_m,k_n)$ denotes the finite-depth surface velocity potential kernel \citep{madsen2012third}.
+As for the surface elevation, the kernel depends explicitly on the interacting pair through the combination wavenumber and associated depth factors.
+The exact reconstruction therefore requires $\mathcal{O}(N_c^2)$ operations.
+
+The same kernel substitution principle applies to the surface velocity potential.
+Replacing the pair-dependent kernel $\mu_{m+n}(k_m,k_n)$ by the symmetric surrogate constructed from the monochromatic coefficient $\mu_{2n}(k)$,
+\begin{equation}
+\mu_{m+n}(k_m,k_n)
+\approx
+\frac12\Big[
+\mu_{2n}(k_m)
++
+\mu_{2n}(k_n)
+\Big],
+\end{equation}
+the double sum separates algebraically.
+
+Introducing the analytic signal of the linear surface elevation,
+\[
+\eta_a^{(11)}(x,t)
+=
+\sum_n a_n e^{i\theta_n},
+\]
+and its $\mu_{2n}(k)$-weighted counterpart
+\[
+\eta_{a,\mu}^{(11)}(x,t)
+=
+\sum_m \mu_{2n}(k_m)a_m e^{i\theta_m},
+\]
+the second-order superharmonic surface velocity potential may be written compactly as
+\begin{equation}\label{method:phis22_VWA_final}
+\phi^{(22)}_{s,\mathrm{VWA}}(x,t)
+=
+\Im\left\{
+\eta_{a,\mu}^{(11)}(x,t)\,
+\eta_a^{(11)}(x,t)
+\right\}.
+\end{equation}
+Since the free-surface elevation and surface velocity potential are phase-shifted by $\pi/2$, the superharmonic contribution to $\eta$ is proportional to $\cos(\theta_m+\theta_n)$, whereas that to $\phi_s$ is proportional to $\sin(\theta_m+\theta_n)$. The compact reconstruction for $\phi_s^{(22)}$ is therefore written in terms of the imaginary part of the associated analytic-signal product.
+
+As in the case of the surface elevation, VWA preserves the exact quadratic phase structure $\theta_m+\theta_n$ and the self-interaction limit, while approximating only the kernel amplitude. 
+The resulting reconstruction replaces the full $N_c\times N_c$ kernel evaluation by two one-dimensional spectral syntheses and a pointwise product, reducing the computational cost from $\mathcal{O}(N_c^2)$ to $\mathcal{O}(N_c\log N_c)$. The accuracy of the second-order VWA for the surface velocity potential is assessed in \cref{method:2nd_kernel_comparison,sec:secondorderresult}.
+
+
+\subsection{Higher-order extension of VWA}
+\label{sec:VWA_higher_order_structure}
+
+The kernel substitution introduced above at second order extends systematically to higher perturbation orders.
+
+In the component-resolved wave interaction theory, the $n$th-order superharmonic contribution to the surface variables is generated by ordered $n$-tuples of linear components. 
+Denoting the linear analytic signal by
+\[
+\eta_a^{(11)}(x,t)
+=
+\sum_{j=1}^{N_c}
+a_j e^{i\theta_j},
+\qquad
+\theta_j = k_j x - \omega_j t,
+\]
+the exact $n$th-order superharmonic surface elevation may be written schematically as
+\begin{equation}\label{eq:exact_nth_structure}
+\eta^{(n n)}_{\mathrm{exact}}(x,t)
+=
+\Re\left\{
+\sum_{j_1=1}^{N_c}\cdots\sum_{j_n=1}^{N_c}
+K^{(n)}(k_{j_1},\dots,k_{j_n})
+\,a_{j_1}\cdots a_{j_n}
+\,e^{i(\theta_{j_1}+\cdots+\theta_{j_n})}
+\right\},
+\end{equation}
+where $K^{(n)}$ denotes the exact $n$th-order interaction kernel.
+The reconstruction therefore involves an $\mathcal{O}(N_c^n)$ summation.
+
+An entirely analogous expression holds for the surface velocity potential, with a corresponding kernel $\mu^{(n)}$ and the imaginary part taken instead of the real part. Note that the evaluation of surface velocity potential couples the velocity potential to surface elevation contributions of different perturbation orders through the Taylor expansion about the mean surface.
+
+
+In VWA, the $n$-tuple-dependent kernel $K^{(n)}(k_{j_1},\dots,k_{j_n})$ is replaced by a symmetric surrogate constructed from the corresponding monochromatic $n$th-order Stokes coefficient, denoted $K^{(n)}_{n}(k)$. 
+This yields a separable approximation of the form
+\begin{equation}\label{eq:VWA_nth_structure}
+\eta^{(n n)}_{\mathrm{VWA}}(x,t)
+=
+\Re\left\{
+\eta_{a,K^{(n)}}^{(11)}(x,t)\,
+\bigl[\eta_a^{(11)}(x,t)\bigr]^{\,n-1}
+\right\},
+\end{equation}
+where
+\[
+\eta_{a,K^{(n)}}^{(11)}(x,t)
+=
+\sum_{j=1}^{N_c}
+K^{(n)}_{n}(k_j)\,a_j e^{i\theta_j}.
+\]
+This replaces the full component-resolved interaction in \cref{eq:exact_nth_structure} by products of a small number of analytical signals. Thus, the exact combined phase
+\[
+\theta_{j_1}+\cdots+\theta_{j_n}
+\]
+is retained identically, and the interaction types remains unchanged. 
+The approximation affects only the kernel amplitude, replacing the fully $n$-tuple-dependent interaction coefficient by a separable representation constructed from diagonal (self-interaction) evaluations.
+
+Computationally, the VWA representation reduces the combinatorial $\mathcal{O}(N_c^n)$ summation of the exact theory to repeated FFT-based spectral syntheses and pointwise products, yielding an overall complexity of $\mathcal{O}(N_c\log N_c)$ for each perturbation order.
+
+Explicit expressions for the monochromatic higher-order kernels used in the present work are provided in Appendix~\ref{appC}.
+
+\section{Assessment on the assumption of VWA}\label{sec:examinationofassumption}
+
+\subsection{Assessment against component-resolved second-order theory}\label{method:2nd_kernel_comparison}
+
+The VWA formulation replaces the fully component-dependent interaction kernel by a separable surrogate constructed from the monochromatic (self-interaction) coefficients. 
+The underlying assumption is therefore not that the kernel is flat, but that the dominant depth-dependent structure of the interaction can be captured by diagonal Stokes coefficients, while retaining the exact quadratic phase structure.
+
+Although the practical VWA algorithm does not require explicit evaluation of mutual-interaction kernels, it is instructive to write the implied VWA kernels in component-resolved form in order to enable a direct comparison with classical second-order interaction theory.
+
+% \subsubsection{VWA second-order kernels}\label{sec:2ndVWAkernel}
+
+From the separable representation introduced in \S\ref{sec:VWA_higher_order_structure}, the second-order VWA mutual-interaction kernels may be written as
+\begin{subequations}
+\label{eq:2ndVWA-kernels-clean}
+\begin{align}
+G_{m+n}^{\mathrm{VWA}}(k_m,k_n)
+&=
+\frac12
+\Big[
+G_{2n}(k_m)
++
+G_{2n}(k_n)
+\Big],
+\\[2mm]
+\mu_{m+n}^{\mathrm{VWA}}(k_m,k_n)
+&=
+\frac12
+\Big[
+\mu_{2n}(k_m)
++
+\mu_{2n}(k_n)
+\Big],
+\end{align}
+\end{subequations}
+where $G_{2n}(k)$ and $\mu_{2n}(k)$ denote the monochromatic second-harmonic coefficients for surface elevation and surface velocity potential, respectively (explicit forms are given in Appendix~\ref{appC}).
+
+
+In the deep-water unidirectional limit the VWA kernels reduce to
+\begin{subequations}
+\label{eq:2ndVWA-kernels-deep-clean}
+\begin{align}
+G_{m+n}^{\mathrm{VWA},\infty}(k_m,k_n)
+&=
+\frac12\,(k_m+k_n),
+\\[2mm]
+\mu_{m+n}^{\mathrm{VWA},\infty}(k_m,k_n)
+&=
+-\frac12\,(\omega_m+\omega_n).
+\end{align}
+\end{subequations}
+
+The exact finite-depth second-order kernels derived by \citet{dalzell1999note} and \citet{madsen2012third} reduce in the same limit to
+\begin{subequations}
+\label{eq:2ndExact-kernels-deep-clean}
+\begin{align}
+G_{m+n}^{\mathrm{exact},\infty}(k_m,k_n)
+&=
+\frac12\,(k_m+k_n),
+\\[2mm]
+\mu_{m+n}^{\mathrm{exact},\infty}(k_m,k_n)
+&=
+-\frac12\,(\omega_m+\omega_n),
+\end{align}
+\end{subequations}
+so that VWA recovers the exact second-order superharmonic interaction kernels in the deep-water unidirectional regime.
+
+Away from the deep-water limit, the exact kernels retain explicit dependence on the combination wavenumber $k_{m+n}$ and associated depth factors, whereas VWA approximates this dependence through the separable surrogate \eqref{eq:2ndVWA-kernels-clean}. 
+The resulting discrepancy therefore arises solely from amplitude differences in the kernel, while the quadratic phase structure $\theta_m+\theta_n$ is preserved.% identically.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/2ndeta_phi_kernel_ratio_comparison.png} 
+  \caption{Ratio of kernel functions for second-order surface elevation $G_{n+m}$ and surface velocity potential $\mu_{n+m}$ across different wavenumber ratios and water depth. Here, the superscript `exact' refers to the second-order theory in \cite{madsen2006third,madsen2012third}.}
+  \label{fig:2ndkernelratio}
+\end{figure}
+
+Figure~\ref{fig:2ndkernelratio} shows the ratios of the VWA kernels to the exact second-order kernels for representative component ratios $k_2/k_1$ over a range of dimensionless depths $k_1 d$. 
+For both surface elevation and surface velocity potential, the ratios approach unity as $k_1 d\to\infty$ and as $k_2/k_1\to 1$, consistent with the deep-water and monochromatic limits. 
+At finite depth, deviations increase with component separation and decreasing depth, but remain moderate for practical ranges ($k_1 d\gtrsim 1$), indicating that the separable approximation captures the dominant depth-dependent curvature of the interaction coefficients.
+
+The question arises as to whether the approach taken here is the most accurate approach to `diagonalising' the interactions. This is not something we have been able to prove. However, we have considered the `Newman-type' approximations which rely on the interaction kernels being assumed flat \citep{Newman}.% For practical ranges ($k_1 d\gtrsim 1$), however, the deviations remain at around $10\%$, which we regard as adequate for the present applications and assess further at the reconstructed-field level in \cref{result:2ndexistingtheory}.
+
+In representative tests, VWA significantly outperforms this approximation in a direction perpendicular to the leading diagonal $(k_2=k_1)$, with the largest improvements observed in shallower regimes. 
+A detailed comparison is omitted here for brevity.
+
+%Beyond this kernel-level assessment, the impact of these deviations on reconstructed free-surface fields is examined in \S\ref{result:2ndexistingtheory}.
+
+\subsection{Assessment against component-resolved third-order theory}
+\label{method:3rd_kernel_comparison}
+
+Having established the second-order asymptotic consistency and quantified finite-depth deviations, we now examine the third-order extension of VWA at the kernel level.
+
+At third order, the exact finite-depth interaction theory is fully \emph{component-resolved} \citep{madsen2012third}. Each ordered triad of linear components generates a superharmonic contribution at the combined phase 
+\[
+\theta_{j_1}+\theta_{j_2}+\theta_{j_3},
+\]
+and the corresponding transfer is governed by triad-dependent kernel coefficients. 
+These coefficients may be grouped into interaction classes, including self-interactions (e.g.\ $3n$), partially mixed triads (e.g.\ $2n+m$, $n+2m$), and fully mixed triads (e.g.\ $n+m+p$).
+
+In VWA, the triad-dependent kernels are replaced by symmetric surrogates constructed from the monochromatic third-order Stokes coefficients. 
+This preserves the exact cubic phase structure while approximating only the amplitude of the interaction coefficient, yielding the FFT-friendly product structure introduced in \S\ref{sec:VWA_higher_order_structure}. 
+Explicit forms of the resulting VWA triad kernels are given in Appendix~\ref{appB}.
+
+
+To provide a direct diagnostic, we compare VWA against the third-order interaction theory of \citet{madsen2012third} for a representative three-component configuration that generates all principal third-order interaction classes. 
+We consider the wavenumber set
+\[
+k=[0.5k_p,\,1.0k_p,\,1.5k_p],
+\]
+with equal component amplitudes, and examine two representative depths, $k_p d=5$ and $k_p d=2$.
+
+Tables~\ref{tab:vwa_fuhrman_eta_comparison} and \ref{tab:vwa_fuhrman_phi_comparison} report the third-order kernel coefficients for the superharmonic surface elevation ($G$) and surface velocity potential ($\mu$), respectively. 
+The relative kernel discrepancy is defined as
+\[
+\frac{\lvert K^{\mathrm{VWA}}-K^{\mathrm{Exact}}\rvert}
+{\lvert K^{\mathrm{Exact}}\rvert}\times 100\%,
+\qquad K\in\{G,\mu\}.
+\]
+
+\begin{table}
+\centering
+\caption{Comparison of third-order surface elevation kernel coefficients: VWA vs. Fuhrman method}
+\label{tab:vwa_fuhrman_eta_comparison}
+\begin{tabular}{lrrrr}
+\toprule
+Interaction Type & \multicolumn{2}{c}{Rel. Error (\%)} & \multicolumn{2}{c}{Abs. Error} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+ & $kd=5$ & $kd=2$ & $kd=5$ & $kd=2$ \\
+\midrule
+$G_{3n}$ (n+n+n)   & -0.0000 & -0.0000 & $0.01 \times 10^{-16}$ & $0.00 \times 10^{-16}$ \\
+$G_{3m}$ (m+m+m)   & -0.0000 & -0.0000 & $0.00 \times 10^{-16}$ & $0.00 \times 10^{-16}$ \\
+$G_{3p}$ (p+p+p)   &  0.0000 & -0.0000 & $0.00 \times 10^{-16}$ & $0.01 \times 10^{-16}$ \\
+$G_{m+n+p}$        & -0.0916 & -3.9440 & $1.61 \times 10^{-6}$ & $8.96 \times 10^{-5}$ \\
+$G_{2n+m}$         & -0.0740 & -1.9652 & $4.88 \times 10^{-7}$ & $1.92 \times 10^{-5}$ \\
+$G_{2n+p}$         & -0.1522 & -5.7345 & $1.16 \times 10^{-6}$ & $6.18 \times 10^{-5}$ \\
+$G_{2m+p}$         & -0.0102 & -0.9323 & $1.01 \times 10^{-7}$ & $1.11 \times 10^{-5}$ \\
+$G_{n+2m}$         & -0.0589 & -1.7884 & $4.50 \times 10^{-7}$ & $1.85 \times 10^{-5}$ \\
+$G_{n+2p}$         & -0.1001 & -4.7785 & $9.99 \times 10^{-7}$ & $5.92 \times 10^{-5}$ \\
+$G_{m+2p}$         & -0.0081 & -0.8483 & $9.12 \times 10^{-8}$ & $1.09 \times 10^{-5}$ \\
+\bottomrule
+\end{tabular}
+\vspace{0.5ex}
+{\\ \small Wave numbers: $k_x = [0.8k_p, 1.0k_p, 1.2k_p]$ with $k_p = 0.0279\,\text{rad/m}$.}\\
+{\small Water depths: Case~1 $h = 179.2$~m ($kd = 5$), Case~2 $h = 71.7$~m ($kd = 2$).}\\
+{\small Harmonic amplitudes: $a = [1.00, 1.00, 1.00]$~m.}\\
+\end{table}
+
+\begin{table}
+\centering
+\caption{Comparison of third-order velocity potential kernel coefficients: VWA vs. Exact Theory}
+\label{tab:vwa_fuhrman_phi_comparison}
+\begin{tabular}{lrrrr}
+\toprule
+Interaction Type & \multicolumn{2}{c}{Rel. Error (\%)} & \multicolumn{2}{c}{Abs. Error} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+ & $k_pd=5$ & $k_pd=2$ & $k_pd=5$ & $k_pd=2$ \\
+\midrule
+$\mu_{3n}$ (n+n+n) &  0.0000 &  0.0000 & $0.01 \times 10^{-16}$ & $0.02 \times 10^{-16}$ \\
+$\mu_{3m}$ (m+m+m) &  0.0000 &  0.0000 & $0.04 \times 10^{-16}$ & $0.01 \times 10^{-16}$ \\
+$\mu_{3p}$ (p+p+p) &  0.0000 &  0.0000 & $0.05 \times 10^{-16}$ & $0.02 \times 10^{-16}$ \\
+$\mu_{m+n+p}$      &  7.6776 &  1.6816 & $2.51 \times 10^{-3}$ & $8.47 \times 10^{-4}$ \\
+$\mu_{2n+m}$       &  4.7912 &  0.7310 & $4.40 \times 10^{-4}$ & $1.62 \times 10^{-4}$ \\
+$\mu_{2n+p}$       & 13.5356 &  3.2020 & $1.69 \times 10^{-3}$ & $8.59 \times 10^{-4}$ \\
+$\mu_{2m+p}$       &  1.9863 &  0.5480 & $4.09 \times 10^{-4}$ & $1.28 \times 10^{-4}$ \\
+$\mu_{n+2m}$       &  3.4282 &  0.2186 & $4.32 \times 10^{-4}$ & $4.59 \times 10^{-5}$ \\
+$\mu_{n+2p}$       &  8.1013 &  3.8188 & $1.66 \times 10^{-3}$ & $1.13 \times 10^{-3}$ \\
+$\mu_{m+2p}$       &  1.6248 &  0.4309 & $4.09 \times 10^{-4}$ & $1.17 \times 10^{-4}$ \\
+\bottomrule
+\end{tabular}
+\vspace{0.5ex}
+{\\ \small Wave numbers: $k_x = [0.5k_p, 1.0k_p, 1.5k_p]$ with $k_p = 0.0279\,\text{rad/m}$.}\\
+{\small Water depths: Case~1 $d = 179.2$~m ($k_pd = 5$), Case~2 $d = 71.7$~m ($k_pd = 2$).}\\
+{\small Harmonic amplitudes: $a = [1.00, 1.00, 1.00]$~m.}\
+\end{table}
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/3rd_combined_eta_phi_kernel_subplots.png}
+  % \caption{Comparison of the third order kernels functions of surface elevation and surface velocity potential between VWA and \cite{madsen2012third}.}
+  \caption{Combined relative error (\%) of the assembled third-order superharmonic kernels between the VWA and the interaction theory of \cite{madsen2012third}, shown over triad space $(k_2/k_p,k_3/k_p)$ with $k_1=k_p$. The upper panels correspond to the elevation kernel and the lower panels to the surface-potential kernel. Left: $k_pd=5$; right: $k_pd=2$.}
+  \label{fig:3rdkernelcontour}
+\end{figure}
+
+Several consistent features emerge. First, the self-interaction coefficients (e.g.\ $G_{3n}$ and $\mu_{3n}$) agree to machine precision, since VWA adopts the corresponding monochromatic Stokes contributions by construction. Second, the largest discrepancies occur in mixed interaction classes. For the present configuration, the fully mixed class ($n+m+p$) and partially mixed classes ($2n+p$, $2n+m$, $n+2m$) exhibit the largest relative deviations, whereas other mixed classes remain closer to the exact values. Third, the magnitude of the deviation depends on interaction type and depth, but does not follow a strictly monotonic trend with depth. 
+Different triad classes display distinct depth sensitivities.
+
+
+While the kernel-by-kernel comparison identifies local discrepancies, it does not reveal how the mismatch is distributed across continuous triad space. 
+To provide a global measure, we introduce an \emph{assembled} relative kernel error,
+\begin{equation}
+\label{method:assembled_error_def_clean}
+\epsilon_{\mathrm{asm}}(k_1,k_2,k_3)
+=
+\frac{\sum_{q\in\mathcal{Q}}
+\left|K^{\mathrm{VWA}}_{q}-K^{\mathrm{Exact}}_{q}\right|}
+{\sum_{q\in\mathcal{Q}}
+\left|K^{\mathrm{Exact}}_{q}\right|}
+\times 100\%,
+\end{equation}
+where $K_q$ denotes the third-order kernel coefficients (for $\eta$, $K_q\equiv G_q$; for $\phi_s$, $K_q\equiv \mu_q$), and $\mathcal{Q}$ is the set of interaction classes included in the comparison. 
+This measure is used solely as a measure of kernel-level mismatch; field-level errors are assessed separately in the Results section.
+
+% Figure~\ref{fig:3rdkernelcontour} shows $\epsilon_{\mathrm{asm}}$ over triad space $(k_2/k_p,k_3/k_p)$ for fixed $k_1=k_p$, for both depth parameters.
+Figure~\ref{fig:3rdkernelcontour} shows $\epsilon_{\mathrm{asm}}$ in the $(k_2/k_p,\,k_3/k_p)$ plane for fixed $k_1=k_p$, for both depth cases.
+The smallest discrepancies occur near the monochromatic diagonal $k_2\approx k_3$, where the interaction approaches the self-interaction limit and VWA is most accurate. 
+Away from this diagonal, mismatch increases for more strongly mixed triads; nevertheless, over most of the triad space shown, the assembled relative error remains within a few per cent for both depths.
+
+Importantly, the assembled errors are typically smaller than the largest individual kernel discrepancies reported in \cref{tab:vwa_fuhrman_eta_comparison,tab:vwa_fuhrman_phi_comparison}. 
+This indicates that deviations in individual interaction classes do not accumulate coherently when all classes are combined, but are moderated by relative kernel magnitudes and partial cancellation.
+
+Finally, we emphasise that these comparisons are performed at the kernel level and therefore isolate the approximation of the component-resolved interaction coefficients. 
+The impact on reconstructed third-order free-surface elevation and surface velocity potential is examined in \S\ref{sec:third_existing_theory}.
+\subsection{Comparison with the Creamer transform}
+\label{method:creamer_comparison}
+
+For perturbation orders beyond third, fully component-resolved finite-depth theory in a form suitable for systematic kernel-by-kernel benchmarking is not readily available. 
+In the deep-water unidirectional setting, however, the Creamer transform \citep{creamer1989improved} provides a nonlinear spectral mapping that generates superharmonic bound contributions at arbitrary order. 
+It therefore serves as a natural benchmark for assessing the higher-order asymptotic behaviour of VWA.
+
+
+In its standard unidirectional formulation, the Creamer transform maps a linear analytic signal to nonlinear surface quantities. 
+Following \citet{creamer1989improved,gibbs_walls_2004,taylor1998creamer}, the Fourier components of the reconstructed surface elevation and surface velocity potential are
+\begin{subequations}\label{method:creamer_transform_main_clean}
+\begin{align}
+\hat\eta_{\mathrm{c}}(k)
+&=\frac{1}{|k|}
+\int_{0}^{\infty} 
+\mathrm{e}^{-\mathrm{i} k x}
+\left[\mathrm{e}^{\mathrm{i} k \eta_{\mathrm{lh}}(x,t)}-1\right]
+\mathrm{d} x, 
+\\
+\hat \phi_{\mathrm{c}}^{\,s}(k)
+&=\frac{1}{|k|}
+\int_{0}^{\infty} 
+\mathrm{e}^{-\mathrm{i} k x}
+\left[\mathrm{e}^{\mathrm{i} k \eta_{\mathrm{lh}}(x,t)}
+\frac{\partial \phi_{\mathrm{lh}}^{\,s}}{\partial x}(x,t)\right]
+\mathrm{d} x,
+\end{align}
+\end{subequations}
+where $\eta_{\mathrm{lh}}$ and $\phi_{\mathrm{lh}}^{\,s}$ denote the analytic (Hilbert-transformed) representations of the linear surface elevation and surface velocity potential.\footnote{In the numerical comparisons of \cref{fig:res_eta22_superharmonic_uni,fig:res_phi22_superharmonic_uni,fig:res_Q_alpha_eta_phi22,fig:res_eta33_superharmonic_uni,fig:res_phi33_superharmonic_uni}, the Creamer benchmark is evaluated from \cref{method:creamer_transform_main_clean}. The monochromatic expansion in \cref{method:creamer_series_eta_phi_clean,method:creamer_coeff_cl_clean} is used here only to show the deep-water asymptotic coefficients for comparison with VWA.} 
+
+
+For a monochromatic deep-water wave,
+\[
+\eta^{(11)}=A\cos\theta,
+\qquad 
+\theta=kx-\omega t,
+\qquad 
+\omega^2=gk,
+\]
+the Creamer transform admits a perturbation expansion of the form
+\begin{equation}\label{method:creamer_series_eta_phi_clean}
+\eta_{\mathrm{c}}
+= \sum_{\ell=1}^{\infty} c_\ell\,A^\ell k^{\ell-1}\cos(\ell\theta),
+\qquad
+\phi_{\mathrm{c}}^{\,s}
+= \frac{g}{\omega}
+\sum_{\ell=1}^{\infty} c_\ell\,A^\ell k^{\ell-1}\sin(\ell\theta),
+\end{equation}
+with coefficients
+\begin{equation}\label{method:creamer_coeff_cl_clean}
+c_\ell=\frac{1}{\ell!}\left(\frac{\ell}{2}\right)^{\ell-1}.
+\end{equation}
+The first few values are $c_2=1/2$, $c_3=3/8$, $c_4=1/3$, and $c_5=125/384$, which coincide with the deep-water Stokes superharmonic coefficients.
+
+We now examine the corresponding deep-water limit of the VWA kernels. 
+Taking $kd\to\infty$ (so that $\tanh(kd)\to 1$ and $\omega^2=gk$), the monochromatic VWA kernels reduce to
+\begin{subequations}\label{method:VWA_deepwater_kernels_clean}
+\begin{align}
+G^{\mathrm{VWA},\infty}_{\ell n}(k)
+&= c_\ell\,k^{\ell-1},
+\\
+\mu^{\mathrm{VWA},\infty}_{\ell n}(k)
+&= \frac{g}{\omega}\,c_\ell\,k^{\ell-1},
+\end{align}
+\end{subequations}
+for $\ell=2,3,4,5$, and analogously at higher orders.
+
+Substituting \eqref{method:VWA_deepwater_kernels_clean} into the unified analytic-signal product representation of VWA yields precisely the coefficient sequence \eqref{method:creamer_series_eta_phi_clean}. 
+Thus, in unidirectional deep water, higher-order VWA reproduces the same superharmonic expansion as the Creamer transform for both the surface elevation and the surface velocity potential.
+
+In this sense, the Creamer transform provides a physically meaningful asymptotic benchmark for VWA: while VWA is derived from finite-depth Stokes coefficients and structured kernel reduction, its higher-order limit is fully consistent with the established deep-water nonlinear spectral mapping.
+
+
+\section{Numerical Experiment and Problem Set-Up}\label{sec:numericals_set_up}
+
+After validating the proposed VWA kernels against exact wave-interaction theory (where available), the next step is to benchmark VWA against a fully nonlinear potential-flow (FNPF) solver. We therefore employ OCEANWAVE3D \citep{engsig-karup_efficient_2009,bingham_accuracy_2007}, which solves the standard fully nonlinear gravity-wave problem.
+
+To examine the performance of VWA for long-crested waves, we generate a unidirectional focused wave group with a normalised semi-Gaussian wavenumber spectrum \citep{liu_phase_2025},
+% \begin{equation}\label{semi-gaussian}
+% S(k)= \begin{cases}\exp \left(\dfrac{-\left(k-k_{\mathrm{p}}\right)^2}{2 k_{\mathrm{l}}^2}\right), & \text { if } k<k_p \\ \exp \left(\dfrac{-\left(k-k_{\mathrm{p}}\right)^2}{2 k_{\mathrm{r}}^2}\right), & \text { if } k>k_p\end{cases}
+% \end{equation}
+\begin{equation}\label{semi-gaussian}
+S(k)=
+\begin{cases}
+\exp\!\left(-\dfrac{(k-k_{\mathrm{p}})^2}{2k_{\ell}^2}\right), & \text{if } k\le k_{\mathrm{p}},\\[1mm]
+\exp\!\left(-\dfrac{(k-k_{\mathrm{p}})^2}{2k_{\mathrm{r}}^2}\right), & \text{if } k> k_{\mathrm{p}},
+\end{cases}
+\end{equation}
+where $k_{\ell}$ and $k_{\mathrm{r}}$ are the (scaled) bandwidth parameters on the low- and high-wavenumber sides, respectively. The spectrum is normalised so that $S(k_{\mathrm{p}})=1$, and the overall wave-group energy is controlled separately by the choice of steepness parameter $Ak_{\mathrm{p}}$. Here, following \citep{gibbs_walls_2004}, we take $k_{\ell}=0.004606$ to emulate a JONSWAP spectrum with $\gamma=3.3$, while $k_{\mathrm{r}}=k_p(2\log(10)^{\alpha})^{1/2}$. The parameter $\alpha$ controls the energy content in the high-wavenumber tail by prescribing $10^{-\alpha}$ at $2k_p$. In the present parametrisation, $\alpha=8$ gives an approximately symmetric Gaussian spectrum about $k_{\mathrm{p}}$ and may therefore be viewed as a simple model for narrow-band swell waves. Thus, larger $\alpha$ corresponds to reduced tail energy and hence a narrower-banded spectrum, whereas smaller $\alpha$ produces a broader-banded spectrum.
+
+Figure~\ref{fig:semiGaussian-otherspectrum} compares energy-normalised semi-Gaussian spectra ($\alpha=1,8$) with the JONSWAP  \citep{hasselmann_measurements_1973} ($\gamma=3.3$) and the Pierson--Moskowitz spectra \citep{pierson_proposed_1964} in the wavenumber domain. The semi-Gaussian parametrisation spans bandwidths from relatively narrow ($\alpha=8$) to broad ($\alpha=1$), comparable to those of the two realistic spectra considered. The bandwidth effects explored herein are therefore expected to be representative of realistic sea states.
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.4\linewidth]{figures/wavenumber_spectrum_comparison.png} 
+  \caption{Comparison of the normalised semi-Gaussian spectrum, the JONSWAP ($\gamma=3.3$) and the Pierson--Moskowitz spectrum in the wavenumber domain.}
+  \label{fig:semiGaussian-otherspectrum}
+\end{figure}
+
+
+For a fair comparison between bound-wave harmonics extracted from the fully nonlinear simulations and those predicted by VWA, we decompose the simulated free-surface elevation and the surface velocity potential for these wave groups into harmonic components using the four-phase separation (phase-manipulation) method of \citet{fitzgerald_phase_2014}. In each case, the decomposition is applied only after the wave group has evolved to a stage where any spurious error waves are well separated from the main packet.
+
+\section{Second Order Surface Elevation and Velocity Potential}\label{sec:secondorderresult}
+
+In \cref{sec:examinationofassumption}, the performance of VWA was assessed at the kernel level by examining the numerical accuracy of individual interaction kernels and their assembled contributions over representative water depth and bandwidth. While such kernel-based diagnostics quantify approximation errors, they do not directly give an intuitive feel for how these errors manifest in realistic waves. We therefore proceed with a waveform-based assessment of the second-order superharmonics, using (i) representative spatial profiles for cases where our approach works well and cases where it has errors, and (ii) compact error summaries based on the surface similarity parameter $Q$ \citep{perlin_robust_2016} which help the reader map between the extreme cases presented in (i). 
+
+For the analytical benchmarks, VWA is compared with established approximations and the corresponding exact second-order solution when available. In deep water, the benchmark set includes the exact theory \citep{madsen2012third} together with representative narrow-band models, such as NLS in equations (A.3, A.5) \citep{trulsen1996modified}, and the narrow-band approximation of Appendix A in \cite{walker_shape_2004}. In finite depth we focus on comparisons among VWA, the exact wave interaction theory and ~\cite{walker_shape_2004}. Finally, to provide an independent high-fidelity reference and to assess end-to-end performance under fully nonlinear wave evolution, the same second-order bound harmonics are extracted from fully nonlinear potential-flow simulations and used for validation.
+
+
+% \subsection{Second Order Unidirectional Wave}
+\subsection{Comparison with the second-order existing theory}\label{result:2ndexistingtheory}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_2nd_order_eta_waves.png} 
+  % \caption{Comparison of the second order harmonic for surface elevation between VWA and the existing theories.}
+  \caption{Second-order superharmonic surface elevation $\eta^{(22)}$ for unidirectional focused wave groups: comparison between VWA and existing theories. Results are normalised by $A^2 k_p$ and shown for (a) a deep-water, narrow-band case ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band case ($k_pd=1$, $\alpha=1$; worst case). Insets provide zoomed views of the crest region and a representative side-lobe interval to highlight local discrepancies among the models.}
+  % \label{fig:result}
+  \label{fig:res_eta22_superharmonic_uni}
+\end{figure}
+
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=\linewidth]{figures/combined_2nd_order_eta_waves.png}
+%   \caption{Second-order superharmonic surface elevation $\eta^{(22)}$ for unidirectional focused wave groups: comparison between VWA and existing theories. Results are normalized by $A^2k_p$ and shown for (a) a deep-water, narrow-band case ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band case ($k_pd=1$, $\alpha=1$; worst case). Insets provide zoomed views of the crest region and a representative side-lobe interval to highlight local discrepancies among the models.}
+%   \label{fig:res_eta22_superharmonic_uni}
+% \end{figure}
+
+Figure~\ref{fig:res_eta22_superharmonic_uni} compares the second-order superharmonic surface elevation $\eta^{(22)}$ predicted by VWA against the exact second-order solution and representative existing approximations. For both cases considered, the different models exhibit very similar phase behaviour, as evidenced by the near coincidence of crest and trough locations as well as the zero crossings. The dominant differences are instead localised amplitude variations, which become most visible in the zoomed views. In the deep-water narrow-band case ($k_pd=5$, $\alpha=8$; Fig.~\ref{fig:res_eta22_superharmonic_uni}a), VWA is essentially indistinguishable from the exact solution over the entire domain, whereas competing approximations show small but systematic deviations in the focal crest region. A more stringent test is provided by the finite-depth broad-band case ($k_pd=1$, $\alpha=1$; Fig.~\ref{fig:res_eta22_superharmonic_uni}b), where the spread among the approximations increases and the crest inset reveals clearer amplitude discrepancies. Nevertheless, the overall deviations remain modest: even in this worst-case wave group, the differences are predominantly confined to the local crest and side-lobe neighbourhoods and are on the order of, or below, $\mathcal{O}(5\%)$ in amplitude when referenced to the local extrema. VWA continues to track the exact solution closely in both the focal crest and the side-lobe region, indicating that the increased sensitivity associated with finite depth and broad bandwidth manifests primarily as amplitude differences rather than phase errors.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_2nd_order_phi_waves.png}
+  \caption{Second-order superharmonic surface velocity potential $\phi_s^{(22)}$ for unidirectional focused wave groups: comparison between VWA, the exact second-order solution \citep{madsen2012third}, and the Creamer transform \citep{creamer1989improved} in deep water. Results are normalised by $A^2 k_p g/\omega_p$ and shown for (a) a deep-water, narrow-band case ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band case ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_phi22_superharmonic_uni}
+\end{figure}
+
+We next assess the corresponding surface velocity potential and compare VWA against the exact second-order theory with respect to the waveform; see figure~\ref{fig:res_phi22_superharmonic_uni}. For the surface velocity potential, the set of available analytical benchmarks in the literature is more limited than for the surface elevation. In particular, many existing approximations report velocity potentials within the fluid domain rather than the free-surface quantity $\phi_s$. We therefore restrict the comparison to the second-order solution of \citet{madsen2012third}, which provides a consistent reference for $\phi_s^{(22)}$, and the Creamer transform in deep water. Figure~\ref{fig:res_phi22_superharmonic_uni} presents two representative wave groups: a deep-water, narrow-band case ($k_pd=5$, $\alpha=8$; best case) and a finite-depth, broad-band case ($k_pd=1$, $\alpha=1$; worst case), with $\phi_s^{(22)}$ normalised by $A^2 k_p g/\omega_p$. In the best-case regime, VWA, Madsen--Fuhrman and the Creamer transform are essentially indistinguishable. In the worst-case regime, the increased sensitivity leads to more visible amplitude discrepancies near the crest, yet the overall phase behaviour remains consistent among the models, with deviations dominated by amplitude rather than any appreciable phase shift.
+
+We then quantify the discrepancy between VWA and the exact wave interaction theory across different water depths and spectral bandwidths using the surface similarity parameter $Q$ \citep{perlin_robust_2016}, which provides a robust measure of the difference between two signals in the Fourier domain and accounts for mismatches in both phase and amplitude. Specifically, for two signals $f_1$ and $f_2$ (with $f_1$ taken as the reference), $Q$ is defined as
+\begin{equation}
+\label{eq:Q_def}
+Q\left(f_1,f_2\right)=\frac{\left(\displaystyle\int\left|\mathcal{F}_1(k)-\mathcal{F}_2(k)\right|^2\,\mathrm{d}k\right)^{1/2}}{\left(\displaystyle\int\left|\mathcal{F}_1(k)\right|^2\,\mathrm{d}k\right)^{1/2}+\left(\displaystyle\int\left|\mathcal{F}_2(k)\right|^2\,\mathrm{d}k\right)^{1/2}},
+\end{equation}
+where $\mathcal{F}_1$ and $\mathcal{F}_2$ are the complex Fourier components of $f_1$ and $f_2$, respectively. The metric satisfies $0\le Q\le1$, with $Q=0$ indicating perfect agreement and $Q=1$ indicating complete disagreement. Although other error measures can be used (e.g.\ root-mean-square error, cosine similarity, or maximum absolute deviation), we adopt $Q$ here because it simultaneously reflects discrepancies in both amplitude and phase and, in our experience, provides trends consistent with the visual assessment of waveform differences \citep{liu_phase_2025}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/Q_vs_Alpha_comparison_2nd_eta_phi_2x3_fixedY.png}
+  % \caption{Surface-similarity parameter $Q$ for the second-order superharmonic components as a function of spectral width $\alpha$. Panels (a--c) correspond to relative depths $kd=5.0$, $kd=2.0$, and $kd=1.0$, respectively. Solid curves show results for the surface elevation $\eta^{(22)}$, where the second-order theory of Dalzell is adopted as the reference solution. The dashed blue curve shows the corresponding result for the surface velocity potential $\phi_s^{(22)}$, where the second-order solution of \citet{madsen2012third} is taken as the reference. VWA is compared with existing approximations for $\eta^{(22)}$; in deep water ($kd=5.0$) the benchmark set includes NLS, the Creamer transform, and Walker \textit{et al.}, whereas in finite depth ($kd=2.0$ and $kd=1.0$) the comparison focuses on Walker \textit{et al.}. The blue and cyan stars mark the two cases selected for detailed comparison in \cref{fig:res_eta22_superharmonic_uni,fig:res_phi22_superharmonic_uni}, corresponding to $(kd=5.0,\alpha=8)$ and $(kd=1.0,\alpha=1)$, respectively. Lower values of $Q$ indicate closer agreement with the reference solution.}
+  % \label{fig:res_Q_alpha_eta_phi22}
+  \caption{Surface-similarity parameter $Q$ for the second-order superharmonic components as a function of spectral width $\alpha$. Panels (a--c) correspond to relative depths $kd=5.0$, $kd=2.0$, and $kd=1.0$, respectively. Solid curves show results for the surface elevation $\eta^{(22)}$, where the second-order theory of Dalzell is adopted as the reference solution. The dashed blue curve shows the corresponding result for the surface velocity potential $\phi_s^{(22)}$, where the second-order solution of \citet{madsen2012third} is taken as the reference. VWA is compared with existing approximations for $\eta^{(22)}$; in deep water ($kd=5.0$) the benchmark set includes NLS, the Creamer transform, and Walker \textit{et al.}, whereas in finite depth ($kd=2.0$ and $kd=1.0$) the comparison focuses on Walker \textit{et al.}. The blue and cyan stars mark the two cases selected for detailed comparison in \cref{fig:res_eta22_superharmonic_uni,fig:res_phi22_superharmonic_uni}, corresponding to $(kd=5.0,\alpha=8)$ and $(kd=1.0,\alpha=1)$, respectively. A broken y-axis is used because the $Q$ values span two markedly separated ranges; a single continuous scale would compress the lower-$Q$ region and obscure differences among the more accurate approximations. Lower values of $Q$ indicate closer agreement with the reference solution.}
+\label{fig:res_Q_alpha_eta_phi22}
+\end{figure}
+
+Figure~\ref{fig:res_Q_alpha_eta_phi22} shows the surface similarity parameter $Q$ for the second-order superharmonic components as a function of spectral width $\alpha$ at three relative depths. For all depths, $Q$ decreases rapidly as $\alpha$ increases and then approaches a weakly varying plateau, indicating that the discrepancy between the approximations and the reference solutions diminishes in the narrow-band limit.
+
+For the surface elevation $\eta^{(22)}$, the $Q$ values remain very small over the entire parameter range, typically of order $\mathcal{O}(10^{-2})$ or smaller. VWA consistently yields the lowest errors among the examined methods. In deep water, the existing approximations improve as the bandwidth narrows but remain systematically less accurate than VWA, while in finite depth the gap between VWA and Walker \textit{et al.} persists and becomes most evident in the finite depth case.
+
+The surface velocity potential $\phi_s^{(22)}$ exhibits a similar qualitative dependence on spectral width and depth, but with somewhat larger $Q$ values, particularly for finite depth and broad-band conditions. This reflects the increased sensitivity of the surface velocity potential to finite-depth and broadband effects. Nevertheless, the overall error levels remain moderate: even in the most demanding regime, the discrepancies remain small in absolute terms and are consistent with the very close agreement observed in the corresponding waveform comparisons in \cref{fig:res_phi22_superharmonic_uni,fig:res_eta22_superharmonic_uni}.
+
+
+\subsection{Comparison with second-order waves from fully nonlinear potential-flow simulations}
+Having tested the performance of VWA through comparisons with the exact second-order theory, we then validate VWA against the fully nonlinear potential-flow solution by OW3D (see \cref{sec:numericals_set_up}). In particular, we compare the second-order superharmonic components extracted from the potential-flow simulations with the corresponding VWA for both the free surface elevation and the surface velocity potential, as shown in \cref{fig:res_eta22_ow3d,fig:res_phi22_ow3d}. Two representative wave groups are considered, consistent with the earlier analytical benchmarks: a deep-water, narrow-band case ($k_pd=5$, $\alpha=8$; best case) and a finite-depth, broad-band case ($k_pd=1$, $\alpha=1$; worst case).
+
+To ensure a fair comparison, the VWA adopts the first-order surface elevation $\eta^{(11)}$ obtained using the same four-phase separation procedure. Specifically, $\eta^{(11)}$ is extracted from the corresponding simulations and used as the input to compute the VWA second-order superharmonic response, which is then compared against the second-order superharmonic components from OW3D (i.e.\ $\eta^{(22)}$ and $\phi_s^{(22)}$). The four-phase procedure isolates harmonic content by phase rather than by perturbation order: in particular, we are unable to separate the $31$ term from the linear term, and the extracted second harmonic may also contain weak higher-order contributions (Fourth Order Second Harmonic, Sixth Order Second Harmonic, etc) with the same phase structure. we use waves of low steepness ($A k_p = 0.02$, where $k_p$ is the peak wavenumber and $A$ is the corresponding amplitude scale.%, i.e.\ $A=(A k_p)/k_p$).
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_2nd_harmonic_comparison_ow3d.png} 
+    \caption{Second-order superharmonic surface elevation $\eta^{(22)}$ for focused wave groups: comparison between VWA and fully nonlinear potential-flow (FNPF) simulations (OW3D; see \cref{sec:numericals_set_up}). The second-order superharmonic component denoted FNPF is extracted from the numerical solution using the four-phase separation procedure described in \cref{sec:numericals_set_up} and is normalised by $A^2 k_p$. The left panel shows a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case), while the right panel shows a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_eta22_ow3d}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_2nd_phi_comparison_ow3d.png} 
+  \caption{Second-order superharmonic surface velocity potential $\phi_s^{(22)}$ for focused wave groups: comparison between VWA and fully nonlinear potential-flow (FNPF) simulations (OW3D; see \cref{sec:numericals_set_up}). The second-order superharmonic component denoted FNPF is extracted from the numerical solution using the four-phase separation procedure described in \cref{sec:numericals_set_up} and is normalised by $A^2 k_p g/\omega_p$. The left panel shows a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case), while the right panel shows a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+    \label{fig:res_phi22_ow3d}
+\end{figure}
+
+The results show excellent agreement between VWA and the FNPF for both surface elevation and surface velocity potential. For the best-case scenario, the VWA and OW3D superharmonic profiles are essentially indistinguishable, capturing both the overall amplitude envelope and the detailed phase structure. In the more stringent worst-case configuration, small discrepancies become slightly more visible; nevertheless, the VWA prediction continues to align closely with the numerical solution, with differences confined to local amplitude variations and no discernible phase drift. The close correspondence in \cref{fig:res_eta22_ow3d,fig:res_phi22_ow3d} confirms that the kernel-level agreement established in \S\ref{method:2nd_kernel_comparison} carries over to a fully nonlinear, high-fidelity potential-flow solution, thereby supporting the use of VWA for practical approximation of second-order superharmonics across a range of water depths and spectral bandwidths.
+
+
+
+
+\section{Third Order Surface Elevation and Velocity Potential}\label{sec:thirdorderresult}
+
+Having examined the accuracy of VWA for second-order superharmonics across depth, and bandwidth, we now do the same for the third-order surface elevation and surface velocity potential. To maintain consistency and facilitate comparison across perturbation orders, the present section follows the same structure as in the second-order results. We first consider unidirectional focused wave groups and benchmark VWA against the available third-order analytical theories \cite{madsen2006third,madsen2012third}, before corroborating the conclusions using third-order superharmonics extracted from fully nonlinear potential-flow simulations. 
+
+%Unlike the second-order section, we do not provide a full parametric sweep in terms of the surface similarity parameter $Q$ at third order. This is because the computational cost of assembling and evaluating the third-order superharmonic responseâ€”particularly when combined with the exact-theory benchmarking over depth, bandwidth, and spreading-angle rangesâ€”becomes prohibitively large. Instead, 
+We focus on representative cases together with fully nonlinear potential-flow validation, which provides a stringent and practically relevant assessment of third-order approximation accuracy. This progressive organisation allows us to isolate model-form differences at the theory level and then confirm end-to-end performance on wave groups under fully nonlinear evolution.
+
+
+
+\subsection{Third Order Waves}
+\subsubsection{Comparison with the existing third-order theory}\label{sec:third_existing_theory}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_3rd_order_eta_waves.png}
+  \caption{Third-order superharmonic surface elevation $\eta^{(33)}$ for unidirectional focused wave groups: comparison between VWA and existing third-order theories \cite{madsen2006third,madsen2012third}. Results are normalised by $A^3 k_p^2$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case). Insets provide zoomed views of the focal crest and a representative side-lobe interval to highlight local discrepancies among the models.}
+  \label{fig:res_eta33_superharmonic_uni}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_3rd_order_phi_waves.png}
+  \caption{Third-order superharmonic surface velocity potential $\phi_s^{(33)}$ for unidirectional focused wave groups: comparison between VWA and existing third-order theories \cite{madsen2006third,madsen2012third}. Results are normalised by $A^3 k_p^2 g/\omega_p$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_phi33_superharmonic_uni}
+\end{figure}
+\Cref{fig:res_eta33_superharmonic_uni,fig:res_phi33_superharmonic_uni} present third-order superharmonic wave profiles for unidirectional focused wave groups, benchmarked against the exact third-order theory \cite{madsen2006third,madsen2012third}. For third order, the comparisons are kept deliberately focused: VWA is evaluated against the exact solution for both depth regimes, and the Creamer transform is included only for the deep-water, narrow-band case as a deep-water reference.
+
+In the deep-water, narrow-band case in \cref{fig:res_eta33_superharmonic_uni}(a), the VWA and exact profiles are nearly indistinguishable over the full spatial range. The zoomed views at the focal crest and a representative side-lobe interval confirm that any residual discrepancy is confined to very small local amplitude differences, with negligible phase offset. The Creamer transform also captures the crest amplitude and the phase structure but exhibits a more noticeable crest-level difference relative to the exact solution.
+
+The finite-depth, broad-band case in \cref{fig:res_eta33_superharmonic_uni}(b) pushes the theory to its limits, since finite-depth effects and bandwidth broadening enhance the contribution of non-diagonal interactions at third order. In this regime, the crest inset reveals a larger local amplitude deviation between VWA and the exact solution; the peak crest difference is on the order of $10\%$. In the side-lobe inset, a slight phase offset becomes discernible, although the overall phase structure and envelope shape remain consistent. Taken together, \cref{fig:res_eta33_superharmonic_uni} indicates that the third-order elevation approximation remains robust, with discrepancies concentrated in crest regions rather than manifesting as a systematic phase shift.
+
+The corresponding comparisons for $\phi_s^{(33)}$ are shown in \cref{fig:res_phi33_superharmonic_uni}. In the deep-water, narrow-band case in \cref{fig:res_phi33_superharmonic_uni}(a), VWA again exhibits near-perfect agreement with the exact solution, while the Creamer transform displays a more apparent deviation in the slowly varying envelope (most visible near the focal region). In the finite-depth, broad-band case in \cref{fig:res_phi33_superharmonic_uni}(b), VWA continues to match the exact solution closely across the profile, with the most visible differences confined to a small region around the crest. Overall, the velocity potential wave profile suggests that the third-order VWA approximation preserves the phase structure and limits the remaining discrepancy primarily to crest amplitude difference, consistent with the trends observed for $\eta^{(33)}$.
+
+Overall, these third-order waveform comparisons reinforce the central observation from the second-order analysis: VWA preserves the phase structure of the superharmonic response, and the remaining error is predominantly expressed as crest amplitude difference under the most challenging conditions.
+
+
+
+
+\subsubsection{Comparison with the third-order wave from potential flow simulation}\label{3rdFNPF}
+
+
+We now compare the performance of VWA with fully nonlinear potential-flow simulations. \Cref{fig:res_eta33_ow3d,fig:res_phi33_ow3d} compare the third-order superharmonic wave groups extracted from the numerical solution with the corresponding VWA approximation. This comparison serves as an end-to-end validation of the practical bound wave approximation workflow: VWA is calculated using the first order surface elevation obtained through the same separation procedure described in \cref{sec:numericals_set_up}, while the numerical solution is obtained by independently extracting the third harmonic content from the fully nonlinear simulation. As with the second-order OW3D comparison, the four-phase separation isolates harmonics by phase rather than by perturbation order, so weak higher-order contributions of the same phase structure may remain present in the extracted signal.
+
+For the deep-water, narrow-band wave group (best case; $k_pd=5$, $\alpha=8$), the agreement is excellent for both $\eta^{(33)}$ and $\phi_s^{(33)}$, with the reconstructed profiles essentially overlapping the numerical reference over the full spatial interval. The correspondence indicates that, in this favourable regime, the third-order approximation is not only consistent with the exact theory but also remains accurate when compared with FNPF. For the finite-depth, broad-band wave group (worst case; $k_pd=1$, $\alpha=1$), small discrepancies become more discernible, particularly near the crest region of the third-order surface velocity potential. Nevertheless, the numerical comparisons show that VWA preserves the correct phase structure and captures the overall superharmonic waveform, with the remaining mismatch largely expressed as a local amplitude difference rather than systematic phase drift. 
+
+Overall, the validation against FNPF confirms that the third order accuracy observed in the analytical benchmarks carries over to a fully nonlinear potential-flow simulation, and that the VWA-based approximation remains robust under the most demanding depth--bandwidth conditions considered here.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_3rd_eta_comparison_ow3d.png}
+  \caption{Third-order superharmonic surface elevation $\eta^{(33)}$ for unidirectional focused wave groups: comparison between VWA and fully nonlinear potential-flow simulations. Results are normalised by $A^3 k_p^2$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_eta33_ow3d}
+\end{figure}
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_3rd_phi_comparison_ow3d.png}
+  \caption{Third-order superharmonic surface velocity potential $\phi_s^{(33)}$ for unidirectional focused wave groups: comparison between VWA and fully nonlinear potential-flow simulations. Results are normalised by $A^3 k_p^2 g/\omega_p$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_phi33_ow3d}
+\end{figure}
+
+\section{Fourth and Fifth Order Surface Elevation and Velocity Potential}\label{result:higherharmonic}
+Beyond third order, closed-form exact interaction theory is not available in a form directly comparable. We therefore assess higher-order superharmonics primarily through comparison against fully nonlinear potential-flow simulations. In this section, we start from unidirectional wave groups and report representative best/worst conditions (deep-water narrow-band versus finite-depth broad-band), focusing on whether VWA can reproduce the higher superharmonic wave extracted from the numerical solution.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_4th_eta_comparison_ow3d.png}
+  \caption{Fourth-order superharmonic surface elevation $\eta^{(44)}$ for unidirectional focused wave groups: comparison between VWA and fully nonlinear potential-flow simulations. Results are normalised by $A^4 k_p^3$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_eta44_ow3d}
+\end{figure}
+
+\Cref{fig:res_eta44_ow3d} compares the fourth-order superharmonic surface elevation $\eta^{(44)}$ from VWA with the corresponding fourth-order component extracted from the fully nonlinear potential-flow simulations. For the deep-water narrow-band case (best case; $k_pd=5$, $\alpha=8$), the agreement is very close throughout the main wave group: the phase structure and the envelope shape are reproduced without observable phase drift, and only minor local amplitude differences can be discerned near the crest region. In the finite-depth broad-band wave group (worst case; $k_pd=1$, $\alpha=1$), the comparison becomes more challenging because the fourth-order bound harmonic is both weaker and more sensitive to bandwidth effects.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_4th_phi_comparison_ow3d.png}
+  \caption{Fourth-order superharmonic surface velocity potential $\phi_s^{(44)}$ for unidirectional focused wave groups: comparison between VWA and fully nonlinear potential-flow simulations. Results are normalised by $A^4 k_p^3 g/\omega_p$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_phi44_ow3d}
+\end{figure}
+
+The corresponding fourth-order surface velocity potential $\phi_s^{(44)}$ is shown in \cref{fig:res_phi44_ow3d}. At both water depths, VWA reproduces the dominant wave group near the focus with good phase alignment, indicating that the fourth-order approximation remains consistent with the fully nonlinear wave at the waveform level. In addition, we do observe visible differences in the finite-depth case in the shape and magnitude of the envelope, indicating that the VWA for the surface velocity potential becomes slightly less accurate at higher superharmonic orders. Importantly, the comparison in the crest region, where the fourth-order signal is strongest, remains the relevant indicator, and there VWA and FNPF show consistent packet structure and crest/trough placement.
+
+
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_5th_eta_comparison_ow3d.png}
+  \caption{Fifth-order superharmonic surface elevation $\eta^{(55)}$ for unidirectional focused wave groups: comparison between VWA and fully nonlinear potential-flow simulations. Results are normalised by $A^5 k_p^4$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_eta55_ow3d}
+\end{figure}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/combined_5th_phi_comparison_ow3d.png}
+  \caption{Fifth-order superharmonic surface velocity potential $\phi_s^{(55)}$ for unidirectional focused wave groups: comparison between VWA and fully nonlinear potential-flow simulations. Results are normalised by $A^5 k_p^4 g/\omega_p$ and shown for (a) a deep-water, narrow-band wave group ($k_pd=5$, $\alpha=8$; best case) and (b) a finite-depth, broad-band wave group ($k_pd=1$, $\alpha=1$; worst case).}
+  \label{fig:res_phi55_ow3d}
+\end{figure}
+
+
+We further extend the comparison between VWA and FNPF to the fifth-order superharmonics. \Cref{fig:res_eta55_ow3d,fig:res_phi55_ow3d} compare the VWA approximations of $\eta^{(55)}$ and $\phi_s^{(55)}$ with the corresponding bound harmonics extracted from the fully nonlinear potential-flow simulations. 
+
+For the surface elevation (\cref{fig:res_eta55_ow3d}), VWA reproduces the fifth-order superharmonic with excellent phase alignment in both the deep-water narrow-band case ($k_pd=5$, $\alpha=8$) and the finite-depth broad-band case ($k_pd=1$, $\alpha=1$). In the best case (panel a), the VWA and FNPF profiles are nearly indistinguishable over the full wave group, indicating that the higher-order approximation remains robust when the group is narrow-banded and weakly affected by finite-depth effects. In the worst case (panel b), small discrepancies become more visible near the edges of the packet and in the local crest/trough amplitudes, yet the overall waveform structure remains consistent, and no systematic phase drift is observed.
+
+The corresponding fifth-order surface velocity potential (\cref{fig:res_phi55_ow3d}) exhibits a similarly close match in the focal region. In deep water (panel a), VWA captures both the magnitude and the phase structure of $\phi_s^{(55)}$ with only minor local crest differences. In finite depth (panel b), the agreement remains good at the waveform level, with discrepancies again expressed primarily as a modest local amplitude bias rather than a change in phase structure. Overall, the fifth-order comparisons confirm that, even at very high order superharmonics where the bound-wave signal becomes extremely small and extraction sensitivity increases, VWA continues to recover the  superharmonic wave group observed in the fully nonlinear simulations.
+
+
+
+
+
+
+% \section{Discussion}
+
+% The Variable Wavenumber Approximation (VWA) replaces the fully component-resolved interaction kernels by a wavenumber-parametrised surrogate constructed from monochromatic Stokes coefficients. 
+% In the conventional formulation, superharmonic evaluation scales combinatorially with the number of spectral components, $\mathcal{O}(N^2)$ at second order and $\mathcal{O}(N^n)$ at order $n$, which rapidly becomes prohibitive for broadband wave groups. 
+% VWA reduces this to repeated spectral synthesis and pointwise products, giving an effective cost of $\mathcal{O}(N\log N)$ per order.
+
+% The effectiveness of this surrogate reflects the structure of the finite-depth interaction kernels. 
+% To leading order, the magnitude and scaling of the interaction coefficients are governed by depth-dependent vertical-structure factors involving $kd$. 
+% Bandwidth primarily influences how these coefficients are sampled across interacting pairs or triads, rather than altering their underlying functional form. The VWA formulation also retains the exact phase structure of the interaction, so that the combined phases (e.g.\ $\theta_m+\theta_n$ or $\theta_{j_1}+\cdots+\theta_{j_n}$) are preserved identically. 
+% The approximation enters only through the amplitude of the interaction kernel, which is replaced by its separable surrogate.
+
+% In deep water, the vertical structure of all components becomes asymptotically uniform and the interaction coefficients lose strong depth sensitivity. 
+% In this limit the VWA becomes asymptotically consistent with the exact theory, explaining the near-indistinguishable agreement observed in broadband deep-water cases.
+
+% As with any kernel-based surrogate, accuracy depends on depth, bandwidth and nonlinearity. 
+% The present results indicate that VWA remains reliable for following-sea spectra down to approximately $k_p d \approx 1.5$, and continues to provide useful estimates near $k_p d \approx 1$.
+
+% Although directional cases are not shown here for brevity, the underlying assumption remains applicable in moderately spread seas: directional spreading redistributes interaction weight but does not remove the dominance of the depth-controlled kernel structure. 
+% Additional tests (not presented) indicate comparable robustness under such conditions.
+
+
+% \section{Conclusions}
+
+% We have introduced the Variable Wavenumber Approximation (VWA) as a separable surrogate for component-resolved wave interaction theory. 
+% The formulation replaces the explicit evaluation of component-resolved interaction kernels, which scales as $\mathcal{O}(N^n)$ at order $n$, by a depth-parametrised representation that preserves the exact phase structure while reducing the marginal computational cost to $\mathcal{O}(N\log N)$.
+
+% For the second- and third-order superharmonic components considered here, VWA achieves near component-resolved agreement in deep water and maintains robust accuracy across a broad range of intermediate depths and spectral bandwidths. 
+% The approximation retains the exact phase structure of the nonlinear interactions, with discrepancies arising solely from the amplitude representation of the interaction kernels.
+
+% Beyond accuracy, the principal contribution of VWA lies in its structural efficiency. 
+% By avoiding the combinatorial growth inherent in component-resolved approaches, the framework enables rapid and repeated superharmonic reconstruction without prohibitive computational overhead. 
+% This makes VWA particularly well suited to applications such as higher-order initialisation of fully nonlinear simulations, and might provide useful guidance for efficient approximation in higher-order wave--structure interaction problems.
+
+\section{Concluding Remarks}
+
+We have introduced the Variable Wavenumber Approximation (VWA) as a separable surrogate for component-resolved wave interaction theory. The formulation replaces the explicit evaluation of component-resolved interaction kernels, which scales as $\mathcal{O}(N^n)$ at order $n$, by a depth-parametrised representation that preserves the exact phase structure while reducing the marginal computational cost to $\mathcal{O}(N\log N)$. By avoiding the combinatorial growth inherent in component-resolved approaches, the framework enables rapid and repeated superharmonic reconstruction without prohibitive computational overhead.
+
+For the second- and third-order superharmonic components considered here, VWA achieves near component-resolved agreement in deep water and maintains robust accuracy across a broad range of intermediate depths and spectral bandwidths. In deep water, the vertical structure of all components becomes asymptotically uniform and the interaction coefficients depend only weakly on depth. In this limit the VWA becomes asymptotically consistent with the exact theory, explaining the near-indistinguishable agreement observed in broadband deep-water cases. As with any kernel-based surrogate, accuracy depends on depth, bandwidth and nonlinearity, but the present results indicate that VWA remains reliable for following-sea spectra down to approximately $k_p d \approx 1.5$, and continues to provide useful estimates near $k_p d \approx 1$.
+
+Although directional cases are not shown here for brevity, the underlying assumption remains applicable in moderately spread seas: directional spreading redistributes interaction weight but does not remove the dominance of the depth-controlled kernel structure. Additional tests (not presented) indicate comparable robustness under such conditions. At higher orders, where component-resolved exact theory is no longer readily available, the comparisons with fully nonlinear potential-flow simulations indicate that VWA continues to capture the main superharmonic structure, while its limitations become more evident under the most demanding depth--bandwidth conditions. The present formulation is therefore suitable for applications such as higher-order initialisation of fully nonlinear simulations, and might provide useful guidance for efficient approximation in higher-order wave--structure interaction problems.
+
+% \newpage
+\begin{appen}
+\renewcommand*{\theHsection}{app.\Alph{section}}
+\renewcommand*{\theHsubsection}{\theHsection.\arabic{subsection}}
+
+\section{A Taylor-series expansion of the Creamer transform}
+\label{appA}
+
+The Creamer transform \citep{creamer1989improved} is a nonlinear spectral mapping designed to represent bound-wave superharmonics in the unidirectional deep-water limit. Although regular-wave superharmonic coefficients implied by the transform are not commonly reported in journal form (see, e.g., \citealt{taylor1998creamer}), we provide the monochromatic Taylor-series expansions here for completeness and for benchmarking the deep-water limit of VWA.
+
+\subsection{Creamer Transform in Fourier form}
+
+Let $\eta^{(11)}(x,t)$ and $\phi_s^{(11)}(x,t)$ denote the linear free-surface elevation and the linear surface velocity potential, respectively. Following \citet{creamer1989improved} and \citet{gibbs_walls_2004}, the Fourier components of the Creamer-reconstructed surface elevation and surface velocity potential may be written as
+\begin{subequations}\label{appA:creamer_transform}
+\begin{align}
+\hat\eta_{\mathrm{c}}(k)
+&=\frac{1}{|k|}\int_{0}^{\infty}\! \mathrm{e}^{-\mathrm{i}kx}
+\left[\exp\!\bigl(\mathrm{i}k\,\eta_{\mathrm{lh}}(x,t)\bigr)-1\right]\mathrm{d}x,
+\\
+\hat\phi^{\,s}_{\mathrm{c}}(k)
+&=\frac{1}{|k|}\int_{0}^{\infty}\! \mathrm{e}^{-\mathrm{i}kx}
+\left[\exp\!\bigl(\mathrm{i}k\,\eta_{\mathrm{lh}}(x,t)\bigr)\,
+\partial_x\phi^{\,s}_{\mathrm{lh}}(x,t)\right]\mathrm{d}x,
+\label{appA:Creamerphic}
+\end{align}
+\end{subequations}
+where the subscript `lh' denotes the analytic (one-sided) representation constructed from the Hilbert transform. For a real-valued field $f(x,t)$ with Fourier transform $\hat f(k,t)$, we define
+\begin{equation}\label{appA:analytic_def}
+f_{\mathrm{lh}}(x,t)
+=\int_{0}^{\infty}\hat f(k,t)\,\mathrm{e}^{\mathrm{i}kx}\,\mathrm{d}k,
+\end{equation}
+so that $f(x,t)=\Re\{f_{\mathrm{lh}}(x,t)\}$ and $\Im\{f_{\mathrm{lh}}(x,t)\}=\mathcal{H}\{f(x,t)\}$, where $\mathcal{H}\{\cdot\}$ denotes the Hilbert transform. In the unidirectional setting considered here, only $k>0$ is retained and hence $|k|=k$ in \cref{appA:creamer_transform}.
+
+\paragraph{Series expansion and Fourier conventions.}
+In deriving the monochromatic coefficients, we use the standard exponential (Taylor) series
+\begin{equation}\label{appA:exp_series}
+\exp(\mathrm{i}k\,\eta_{\mathrm{lh}})
+=\sum_{n=0}^{\infty}\frac{(\mathrm{i}k\,\eta_{\mathrm{lh}})^{n}}{n!},
+\qquad
+\exp(\mathrm{i}k\,\eta_{\mathrm{lh}})-1
+=\sum_{n=1}^{\infty}\frac{(\mathrm{i}k\,\eta_{\mathrm{lh}})^{n}}{n!}.
+\end{equation}
+The Fourier transform is taken as
+\begin{equation}\label{appA:FT_def}
+\hat f(k)=\int_{0}^{\infty} f(x)\,\mathrm{e}^{-\mathrm{i}kx}\,\mathrm{d}x,
+\qquad
+f(x)=\frac{1}{2\pi}\int_{0}^{\infty}\hat f(k)\,\mathrm{e}^{\mathrm{i}kx}\,\mathrm{d}k.
+\end{equation}
+In the monochromatic case $\eta_{\mathrm{lh}}=A\sin\theta$, each term $(\eta_{\mathrm{lh}})^n$ generates harmonics at integer multiples of $\theta$; extracting the $n$th superharmonic amounts to rewriting $\sin^n\theta$ in the form of $\cos(n\theta)$. For this we use the power-reduction identity
+\begin{equation}\label{appA:sin_power_id}
+\sin^{n}\theta
+=\frac{1}{(2\mathrm{i})^{n}}
+\sum_{j=0}^{n}(-1)^{j}\binom{n}{j}\,
+\mathrm{e}^{\mathrm{i}(n-2j)\theta},
+\end{equation}
+which makes the $\mathrm{e}^{\pm \mathrm{i}n\theta}$ contributions explicit.
+
+\subsection{Monochromatic expansion for surface elevation}
+
+Consider a monochromatic deep-water wave
+\begin{equation}\label{appA:mono_eta}
+\eta^{(11)}(x,t)=A\cos\theta,
+\qquad
+\theta=kx-\omega t,
+\qquad
+\omega^2=gk,
+\end{equation}
+for which the Hilbert transform satisfies $\eta_{\mathrm{lh}}=A\sin\theta$ (consistent with a one-sided spectrum). Substituting into \cref{appA:creamer_transform} and expanding the exponential in powers of $A$ yields a pure superharmonic series. After collecting the $\cos(n\theta)$ terms, the Creamer reconstruction admits the compact form
+\begin{equation}\label{appA:eta_series_general}
+\eta_{\mathrm{c}}(x,t)
+=
+\sum_{n=1}^{\infty}
+\frac{1}{n!}\left(\frac{n}{2}\right)^{n-1}
+A^n k^{\,n-1}\cos(n\theta),
+\end{equation}
+which reproduces the expected deep-water Stokes superharmonic hierarchy \citep{fenton1985fifth,zhao2022stokes}. The first five terms are
+\begin{equation}\label{appA:eta_series_2to5}
+\eta_{\mathrm{c}}
+=
+A\cos\theta
++\frac{1}{2}A^2k\cos 2\theta
++\frac{3}{8}A^3k^2\cos 3\theta
++\frac{1}{3}A^4k^3\cos 4\theta
++\frac{125}{384}A^5k^4\cos 5\theta
++\mathcal{O}(A^6).
+\end{equation}
+
+\subsection{Monochromatic expansion for surface velocity potential}
+
+For deep-water linear waves, the surface velocity potential may be written as
+\begin{equation}\label{appA:mono_phi}
+\phi_s^{(11)}(x,t)=\frac{gA}{\omega}\sin\theta,
+\end{equation}
+so that
+\begin{equation}\label{appA:dx_phi_lh}
+\partial_x\phi^{\,s}_{\mathrm{lh}}=\frac{gAk}{\omega}\sin\theta.
+\end{equation}
+Using \cref{appA:Creamerphic} with $\eta_{\mathrm{lh}}=A\sin\theta$ then yields
+\begin{equation}\label{appA:phi_series_general}
+\phi^{\,s}_{\mathrm{c}}(x,t)
+=
+\frac{g}{\omega}
+\sum_{n=1}^{\infty}
+\frac{1}{n!}\left(\frac{n}{2}\right)^{n-1}
+A^n k^{\,n-1}\sin(n\theta),
+\end{equation}
+and hence, up to fifth order,
+\begin{equation}\label{appA:phi_series_2to5}
+\phi^{\,s}_{\mathrm{c}}
+=
+\frac{gA}{\omega}\sin\theta
++\frac{g}{\omega}\frac{1}{2}A^2k\sin 2\theta
++\frac{g}{\omega}\frac{3}{8}A^3k^2\sin 3\theta
++\frac{g}{\omega}\frac{1}{3}A^4k^3\sin 4\theta
++\frac{g}{\omega}\frac{125}{384}A^5k^4\sin 5\theta
++\mathcal{O}(A^6),
+\end{equation}
+consistent with the results reported by \citet{gibbs_walls_2004}.
+
+\section{List of Kernel Functions for the Second and Third Order VWA}\label{appB}
+
+In \cref{result:2ndexistingtheory,sec:third_existing_theory}, we compare the kernel functions of the VWA for the free-surface elevation and the surface velocity potential with the corresponding kernels from the exact theory \citep{dalzell1999note,sharma1981second,madsen2006third,madsen2012third}. Because these kernels do not need to be implemented individually when applying the VWA in practice, we collect them here for ease of comparison. In what follows, we list the second- and third-order kernel functions for both the free-surface elevation and the surface velocity potential. 
+
+\subsection{Second Order Kernels}
+
+We collect here the second-order VWA interaction coefficients for the surface elevation and surface velocity potential, denoted by $G_{n+m}^{\mathrm{VWA}}(k_n,k_m)$ and $\mu_{n+m}^{\mathrm{VWA}}(k_n,k_m)$, respectively. Here, $k_n$ and $k_m$ are the two wavenumber components involved in the second-order wave interaction, $\omega_n$ and $\omega_m$ are the angular frequencies, $a_n$ and $a_m$ are the corresponding wave amplitudes, $g$ is the gravitational acceleration, and $h$ is the water depth. 
+
+The subscript $n+m$ on $G_{n+m}^{\mathrm{VWA}}(k_n,k_m)$ and $\mu_{n+m}^{\mathrm{VWA}}(k_n,k_m)$ indicates the superharmonic (sum-frequency) interaction between components $n$ and $m$. In this appendix, the amplitude factors are retained inside the reported coefficients for direct comparison with the assembled expressions used in the literature. These coefficients may be compared with $a_1 a_2 B_p(k_1,k_2)$ in \cite{dalzell1999note} and with $A_{2n}G_{n+m}$ and $A_{2n}\mu_{n+m}$ in \cite{madsen2006third,madsen2012third}.
+
+\begin{subequations}
+\label{eq:VWA-kernels}
+\begin{align}
+  G_{n+m}^{\mathrm{VWA}}(k_n,k_m)
+  &= a_n a_m
+  \left[
+    k_n \left(
+      \frac{3 - \tanh^{2}\!\bigl(k_n d\bigr)}
+           {4\,\tanh^{3}\!\bigl(k_n d\bigr)}
+    \right)
+    +
+    k_m \left(
+      \frac{3 - \tanh^{2}\!\bigl(k_m d\bigr)}
+           {4\,\tanh^{3}\!\bigl(k_m d\bigr)}
+    \right)
+  \right],
+  \label{eq:VWA-G}
+\\
+\mu_{n+m}^{\mathrm{VWA}}(k_n,k_m)
+  &= a_n a_m
+  \left[
+    \left(
+      -\frac{3\,\omega_n\,\cosh\!\bigl(2 k_n d\bigr)}
+            {8\,\sinh^{4}\!\bigl(k_n d\bigr)}
+      -\frac{\omega_n}{2}
+    \right)
+    +
+    \left(
+      -\frac{3\,\omega_m\,\cosh\!\bigl(2 k_m d\bigr)}
+            {8\,\sinh^{4}\!\bigl(k_m d\bigr)}
+      -\frac{\omega_m}{2}
+    \right)
+  \right].
+  \label{eq:VWA-mu}
+\end{align}
+\end{subequations}
+
+
+\subsection{Third Order Kernels}
+We now collect here the third-order VWA kernel functions for the surface elevation and the surface velocity potential. Here, $k_n$, $k_m$, $k_p$ are the three components involved in a generic third-order
+wave interaction, with $\omega_n$, $\omega_m$, $\omega_p$ the corresponding angular frequencies and $a_n$, $a_m$, $a_p$
+the associated wave amplitudes.
+
+
+The third-order interaction theory \citep{madsen2006third,madsen2012third} involves three components and can be
+categorised as self-interaction ($G_{3n}$), double interaction ($G_{2n+m}$, $G_{n+2m}$) and triple interaction
+($G_{n+m+p}$), according to whether one, two or all three components contribute to the third-order free-surface
+elevation kernel functions. For the surface velocity potential, we use $\mu$ with the same subscripts to indicate the corresponding wave interactions.
+
+For later convenience we introduce the function $\mathcal{C}$, which appears repeatedly in the third-order kernels,
+
+% Third-order depth kernel for the interaction coefficients
+\begin{equation}
+  \mathcal{C}(k,d)
+  = -\frac{3}{64}
+    + \frac{9}{64}\coth^{2}(k d)
+    - \frac{9}{64}\coth^{4}(k d)
+    + \frac{27}{64}\coth^{6}(k d),
+\end{equation}
+where, for brevity, we denote
+\begin{equation}
+  \mathcal{C}_n = \mathcal{C}(k_n,d),\quad
+  \mathcal{C}_m = \mathcal{C}(k_m,d),\quad
+  \mathcal{C}_p = \mathcal{C}(k_p,d).
+\end{equation}
+% Third-order free-surface kernels G
+The third-order kernels for the free-surface elevation corresponding to self-interactions are
+\begin{equation}
+\begin{aligned}
+  G_{3n}^{\mathrm{VWA}}(k_n) &= a_n^{3} k_n^{2}\,\mathcal{C}_n, \\
+  G_{3m}^{\mathrm{VWA}}(k_m) &= a_m^{3} k_m^{2}\,\mathcal{C}_m, \\
+  G_{3p}^{\mathrm{VWA}}(k_p) &= a_p^{3} k_p^{2}\,\mathcal{C}_p,
+\end{aligned}
+\end{equation}
+The third-order kernels for the free-surface elevation corresponding to double interactions are
+\begin{equation}
+\begin{aligned}
+  G_{2n+m}^{\mathrm{VWA}}(k_n,k_m)
+  &= a_n^{2} a_m\Big[
+      k_n^{2}\mathcal{C}_n
+    + k_n k_m(\mathcal{C}_n + \mathcal{C}_m)
+  \Big],\\
+  G_{n+2m}^{\mathrm{VWA}}(k_n,k_m)
+  &= a_n a_m^{2}\Big[
+      k_m^{2}\mathcal{C}_m
+    + k_n k_m(\mathcal{C}_n + \mathcal{C}_m)
+  \Big].
+\end{aligned}
+\end{equation}
+The third-order kernel for the free-surface elevation corresponding to triple interactions is
+\begin{equation}
+\begin{aligned}
+  G_{n+m+p}^{\mathrm{VWA}}(k_n,k_m,k_p)
+  &= a_n a_m a_p \Big[
+      k_n k_m(\mathcal{C}_n + \mathcal{C}_m)
+    + k_n k_p(\mathcal{C}_n + \mathcal{C}_p)
+    + k_m k_p(\mathcal{C}_m + \mathcal{C}_p)
+  \Big],
+\end{aligned}
+\end{equation}
+
+% Third-order velocity-potential kernels mu
+For later convenience, we introduce a hyperbolic depth function that repeatedly appears in the third-order
+velocity-potential kernels. Specifically, we define
+\begin{equation}
+  \mathcal{D}(k,h)
+  = \coth(kd)\Bigl(16 + 56\,\csch^{2}(kd) + 32\,\csch^{4}(kd) + 9\,\csch^{6}(kd)\Bigr),
+\end{equation}
+and denote $\mathcal{D}_n=\mathcal{D}(k_n,h)$, $\mathcal{D}_m=\mathcal{D}(k_m,h)$, and $\mathcal{D}_p=\mathcal{D}(k_p,h)$.
+This definition is motivated by the observation that the lengthy combination of hyperbolic cosines arising from the
+exact evaluation of the third-order free-surface boundary conditions can be written compactly in terms of
+$\mathcal{D}$. Introducing the shorthand $x=kd$, we note the identity
+\begin{equation}
+\label{eq:D-identity}
+\Bigl(27\cosh x-\cosh(3x)+9\cosh(5x)+\cosh(7x)\Bigr)\,\csch^{7}x
+=
+4\,\coth x\Bigl(16+56\,\csch^{2}x+32\,\csch^{4}x+9\,\csch^{6}x\Bigr),
+\end{equation}
+or, equivalently,
+\begin{equation}
+\label{eq:D-identity-kd}
+\Bigl(27\cosh(kd)-\cosh(3kd)+9\cosh(5kd)+\cosh(7kd)\Bigr)\,\csch^{7}(kd)
+= 4\,\mathcal{D}(k,d).
+\end{equation}
+Using \eqref{eq:D-identity}--\eqref{eq:D-identity-kd}, the third-order kernels for the surface velocity potential may be
+presented in a significantly more compact form while remaining algebraically identical to the corresponding closed-form
+expressions implemented in our numerical evaluation.
+
+Likewise, the third-order kernels for the surface velocity potential corresponding to self-interactions are
+\begin{equation}
+\begin{aligned}
+  \mu_{3n}^{\mathrm{VWA}}(k_n)
+  &= -\frac{a_n^{3} k_n}{64\,\omega_n}\Bigl[8\,g\,k_n + \omega_n^{2}\,\mathcal{D}_n\Bigr], \\
+  \mu_{3m}^{\mathrm{VWA}}(k_m)
+  &= -\frac{a_m^{3} k_m}{64\,\omega_m}\Bigl[8\,g\,k_m + \omega_m^{2}\,\mathcal{D}_m\Bigr], \\
+  \mu_{3p}^{\mathrm{VWA}}(k_p)
+  &= -\frac{a_p^{3} k_p}{64\,\omega_p}\Bigl[8\,g\,k_p + \omega_p^{2}\,\mathcal{D}_p\Bigr].
+\end{aligned}
+\end{equation}
+The third-order kernels for the surface velocity potential corresponding to double interactions are
+% \begin{equation}
+% \begin{aligned}
+%   \mu_{2n+m}^{\mathrm{VWA}}(k_n,k_m)
+%   &= -\frac{a_n^{2} a_m}{64\,\omega_n\omega_m}\Bigl[
+%       8\,g\,k_m^{2}\,\omega_n
+%     + 16\,g\,k_n^{2}\,\omega_m
+%     + 2\,k_n\,\omega_n^{2}\omega_m\,\mathcal{D}_n
+%     + k_m\,\omega_n\omega_m^{2}\,\mathcal{D}_m
+%   \Bigr],\\
+%   \mu_{n+2m}^{\mathrm{VWA}}(k_n,k_m)
+%   &= -\frac{a_n a_m^{2}}{128\,\omega_n\omega_m}\Bigl[
+%       32\,g\,k_m^{2}\,\omega_n
+%     + 16\,g\,k_n^{2}\,\omega_m
+%     + 2\,k_n\,\omega_n^{2}\omega_m\,\mathcal{D}_n
+%     + 4\,k_m\,\omega_n\omega_m^{2}\,\mathcal{D}_m
+%   \Bigr].
+% \end{aligned}
+% \end{equation}
+\begin{equation}
+\begin{aligned}
+\mu_{2n+m}^{\mathrm{VWA}}(k_n,k_m)
+&= -\frac{a_n^{2} a_m}{64\,\omega_n \omega_m} 
+   \Bigl[
+       8\,g\,k_m^{2}\,\omega_n
+     + 16\,g\,k_n^{2}\,\omega_m
+     + 2\,k_n\,\omega_n^{2}\omega_m\,\mathcal{D}_n
+     + k_m\,\omega_n \omega_m^{2}\,\mathcal{D}_m
+   \Bigr],\\[1mm]
+\mu_{n+2m}^{\mathrm{VWA}}(k_n,k_m)
+&= -\frac{a_n a_m^{2}}{64\,\omega_n \omega_m} 
+   \Bigl[
+       16\,g\,k_m^{2}\,\omega_n
+     + 8\,g\,k_n^{2}\,\omega_m
+     + k_n\,\omega_n^{2}\omega_m\,\mathcal{D}_n
+     + 2\,k_m\,\omega_n \omega_m^{2}\,\mathcal{D}_m
+   \Bigr].
+\end{aligned}
+\end{equation}
+Finally, the third-order kernel for the surface velocity potential corresponding to triple interactions is
+\begin{equation}
+\begin{aligned}
+  \mu_{n+m+p}^{\mathrm{VWA}}(k_n,k_m,k_p)
+  &= -\frac{a_n a_m a_p}{32\,\omega_n\omega_m\omega_p}\Bigl[
+      8\,g\bigl(
+        k_n^{2}\omega_m\omega_p
+      + k_m^{2}\omega_n\omega_p
+      + k_p^{2}\omega_n\omega_m
+      \bigr)\\
+  &\qquad\qquad\qquad\qquad
+    + k_n\,\omega_n^{2}\omega_m\omega_p\,\mathcal{D}_n
+    + k_m\,\omega_n\omega_m^{2}\omega_p\,\mathcal{D}_m
+    + k_p\,\omega_n\omega_m\omega_p^{2}\,\mathcal{D}_p
+  \Bigr].
+\end{aligned}
+\end{equation}
+
+\section{Closed-form VWA kernels and numerical conditioning}\label{appC}
+
+This appendix records the closed-form monochromatic VWA kernels used in this work for the
+superharmonic free-surface elevation $\eta$ and the free-surface velocity potential
+$\phi_s(x,t)=\phi\bigl(x,\eta(x,t),t\bigr)$.
+The surface-potential kernels are obtained by evaluating the finite-depth Stokes velocity potential
+at the nonlinear free surface and extracting the superharmonic components after Taylor expansion
+about the still-water level. The resulting expressions are reported here for completeness.
+
+\subsection{Kernels for free-surface elevation}\label{appC:eta_kernels}
+
+The monochromatic VWA kernels for the superharmonic free-surface elevation are
+\begin{subequations}\label{app:VWA_G_kernels}
+\begin{align}
+G^{\mathrm{VWA}}_{2n}
+&= \frac{3-\sigma^2}{4\sigma^3}\,k,
+\\[2mm]
+G^{\mathrm{VWA}}_{3n}
+&= \frac{27-9\sigma^2+9\sigma^4-3\sigma^6}{64\sigma^6}\,k^2,
+\\[2mm]
+G^{\mathrm{VWA}}_{4n}
+&=
+\frac{
+24\alpha_1^6+116\alpha_1^5+214\alpha_1^4+188\alpha_1^3+133\alpha_1^2+101\alpha_1+34}
+{24\,(3\alpha_1+2)\,(\alpha_1-1)^4\,\sinh(2kd)}\,k^3,
+\\[2mm]
+G^{\mathrm{VWA}}_{5n}
+&=
+\frac{5\bigl(
+300\alpha_1^8+1579\alpha_1^7+3176\alpha_1^6+2949\alpha_1^5+1188\alpha_1^4
++675\alpha_1^3+1326\alpha_1^2+827\alpha_1+130\bigr)}
+{384\,(\alpha_1-1)^6\,(12\alpha_1^2+11\alpha_1+2)}\,k^4.
+\end{align}
+\end{subequations}
+
+\subsection{Kernels for free-surface velocity potential}\label{appC:phis_kernels}
+
+The VWA multipliers for the superharmonic free-surface velocity potential are obtained by substituting the finite-depth Stokes expansion into $\phi_s=\phi(x,\eta,t)$, performing a Taylor expansion about $z=0$, and extracting the $\sin(\ell\theta)$ superharmonic contribution at each perturbation order.
+\begin{subequations}\label{app:VWA_mu_kernels}
+\begin{align}
+\mu^{\mathrm{VWA}}_{2n}
+&=
+-\frac{\omega}{8}
+\Bigl(
+4 + 3\,\cosh(2kd)\,\csch^{4}(kd)
+\Bigr),
+\\[2mm]
+%
+\mu^{\mathrm{VWA}}_{3n}
+&=
+-\frac{k}{64\,\omega}
+\Bigl[
+8gk
++\omega^{2}\coth(kd)
+\Bigl(
+16+56\,\csch^{2}(kd)
++32\,\csch^{4}(kd)
++9\,\csch^{6}(kd)
+\Bigr)
+\Bigr],
+\\[2mm]
+%
+\mu^{\mathrm{VWA}}_{4n}
+&=
+-\frac{k^{2}\omega}
+{6144\bigl(2+3\cosh(2kd)\bigr)}
+\,\csch^{10}(kd)
+\nonumber\\
+&\qquad\times
+\Bigl(
+408 + 638\cosh(2kd) + 230\cosh(4kd)
++ 171\cosh(6kd)
+\nonumber\\
+&\qquad\qquad
++ 124\cosh(8kd)
++ 43\cosh(10kd)
++ 6\cosh(12kd)
+\Bigr),
+\\[2mm]
+%
+\mu^{\mathrm{VWA}}_{5n}
+&=
+-\frac{gk^{4}}
+{1572864\bigl(2+3\cosh(2kd)\bigr)
+\bigl(1+4\cosh(2kd)\bigr)\,\omega}
+\,\csch^{12}(kd)
+\nonumber\\
+&\qquad\times
+\Bigl(
+184650
++ 222141\cosh(2kd)
++ 182320\cosh(4kd)
+\nonumber\\
+&\qquad\qquad
++ 43815\cosh(6kd)
++ 72200\cosh(8kd)
++ 44773\cosh(10kd)
+\nonumber\\
+&\qquad\qquad
++ 20880\cosh(12kd)
++ 6071\cosh(14kd)
++ 750\cosh(16kd)
+\Bigr).
+\end{align}
+\end{subequations}
+
+To the authors' knowledge, compact finite-depth closed-form expressions for superharmonic
+free-surface potential coefficients beyond third order are not readily available in the literature,
+and are therefore reported here for completeness.
+
+\subsection{Definitions and numerical conditioning}\label{appC:defs_safeguard}
+
+Throughout,
+\[
+\omega = \sqrt{gk\tanh(kd)},
+\qquad
+\sigma=\tanh(kd),
+\qquad
+\alpha_1=\cosh(2kd)=\frac{1+\sigma^2}{1-\sigma^2}.
+\]
+
+The higher-order kernels contain large powers of $\csch(kd)$ and $\coth(kd)$.
+As $kd\to 0$, one has
+\[
+\csch(kd)\sim \frac{1}{kd},
+\qquad
+\coth(kd)\sim \frac{1}{kd},
+\]
+leading to strong algebraic amplification and potential numerical ill-conditioning.
+Moreover, periodic Stokes-type expansions are generally not recommended in the shallow-water regime
+\citep{le2013introduction,fenton1985fifth,fenton1990nonlinear,fenton1999cnoidal,holthuijsen2010waves,zhao_guide_2024}.
+
+In the present implementation, kernel evaluation is capped for
+\[
+kd < kd_{\min},
+\qquad
+kd_{\min}=0.3,
+\]
+corresponding to $h/L \approx 0.048$, i.e.\ close to the commonly adopted shallow-water boundary
+$h/L\lesssim 1/20$.
+\end{appen}
+
+\section*{Acknowledgements}
+TT was supported by the Eric and Wendy Schmidt AI in Science Postdoctoral Fellowship. %An abbreviated version of this work was presented at the 41st International Workshop on Water Waves and Floating Bodies (IWWWFB 41).
+The authors are grateful to Professor David Fuhrman for helpful discussions concerning the implementation of the underlying interaction theory and for clarifications related to its published and open-source formulations. The authors also thank Mr Haiqi Fang for his careful reading of the manuscript and for his thoughtful comments.
+ 
+
+\section*{Declaration of interests} 
+%
+The authors report no conflict of interest.
+
+\section*{Author Credit Statement}
+Xinyu Liu: Methodology, Software, Validation, Formal analysis, Visualization, Writing--original draft, Supervision. 
+Tianning Tang: Conceptualization, Methodology, Validation, Writing--review \& editing. 
+Paul H. Taylor: Methodology, Writing--review \& editing. 
+Wouter Mostert: Methodology, Writing--review \& editing, Supervision. 
+Thomas A. A. Adcock: Conceptualization, Methodology, Resources, Writing--review \& editing, Supervision, Project administration.
+
+\clearpage
+\bibliographystyle{jfm}
+\bibliography{manual}
+
+
+\end{document}
+

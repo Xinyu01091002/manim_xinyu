@@ -1,0 +1,235 @@
+\documentclass[11pt,letter]{article}
+\usepackage[letterpaper,left=1in,right=1in,top=0.8in,bottom=0.8in]{geometry}
+% \usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{scrlayer}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage[noabbrev]{cleveref}
+\captionsetup{font=tiny}
+\usepackage{setspace}
+\setstretch{0.75}  % 例如 0.95 / 0.9；太小会影响可读性
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{etoolbox}
+\AtBeginEnvironment{thebibliography}{%
+  \scriptsize            % 字号
+  \linespread{-0.15}\selectfont  % 压“行距”（比 \setstretch 更硬一些）
+  \setlength{\itemsep}{0pt}     % 压“条目之间”的空隙（最关键）
+  \setlength{\parsep}{0pt}      % 条目内段落间距
+  \setlength{\parskip}{0pt}     % 段落间距
+  \setlength{\topsep}{0pt}      % 列表与上下文间距
+  \setlength{\partopsep}{0pt}%
+}
+\DeclareNewLayer[
+  foreground,
+  innermargin,
+  contents=\layercontentsmeasure
+]{measurelayer}
+\DeclareNewPageStyleByLayers{measurestyle}{measurelayer}
+\pagestyle{empty}
+\bibliographystyle{iwwwfb40}
+\renewcommand\refname{{\normalsize REFERENCES}}
+% --- tighten display math spacing ---
+\AtBeginDocument{%
+  \setlength{\abovedisplayskip}{6pt minus 2pt}
+  \setlength{\belowdisplayskip}{6pt minus 2pt}
+  \setlength{\abovedisplayshortskip}{4pt  minus 2pt}
+  \setlength{\belowdisplayshortskip}{4pt  minus 2pt}
+  \setlength{\jot}{2pt} % line spacing within align/gather (default ~3pt); adjust if needed
+}
+% --- tighten float spacing (figures/tables) ---
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+
+
+\begin{document}
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{center}
+{\bf{\large Estimating Superharmonic Bound Waves with the Variable Wavenumber Approximation}}\\[0.25cm]
+
+{\bf \underline{Xinyu Liu}$^{1}$, Tianning Tang$^{1,2}$, Paul H.~Taylor$^{3}$, Wouter Mostert$^{1}$, Thomas A.~A.~Adcock$^{1}$}\\[0.15cm]
+
+$^{1}$Department of Engineering Science, University of Oxford, Oxford, United Kingdom\\
+$^{2}$Department of Mechanical and Aerospace Engineering, University of Manchester, Manchester, United Kingdom\\
+$^{3}$School of Earth and Oceans, The University of Western Australia, Australia\\[0.1cm]
+
+\texttt{xinyu.liu2@eng.ox.ac.uk} 
+\end{center}
+
+% \vskip 3mm
+\noindent
+
+	%%%%%%%%%%%%%%%%%%%%% Write ABSTRACT from here %%%%%%%%%%%%%%%%%%%%%%
+\paragraph{HIGHLIGHTS}
+\begin{enumerate}[leftmargin=*, topsep=2pt, itemsep=1pt, parsep=0pt, partopsep=0pt]
+    \item We introduce the Variable Wavenumber Approximation (VWA), an FFT-based framework for computing superharmonic bound waves, providing both $\eta^{(nn)}$ and the free-surface potential $\phi_s^{(nn)}$ to arbitrary order.
+    \item For second-order superharmonics, VWA matches established interaction theory in deep-water unidirectional waves and is further validated against fully nonlinear potential-flow simulations across bandwidth and depth.
+    \item The formulation extends naturally to higher-order harmonics and directionally spread wave groups, while delivering orders-of-magnitude reductions in runtime (typically thousands-fold speedup relative to exact interaction evaluation).
+\end{enumerate}
+
+
+
+\paragraph{1. INTRODUCTION}$\quad$\\
+Ocean-wave dynamics may be decomposed into dispersive free waves and nonlinear bound waves that are slaved to the free waves. This work focuses on second-order \emph{superharmonic} bound waves and presents a fast, robust procedure---the Variable Wavenumber Approximation (VWA)---to compute both the free-surface elevation and, importantly, the \emph{surface} velocity potential.
+
+Bound harmonics are important for wave generation and simulation initialisation \cite{madsen_third-order_2012} and influence crest statistics and related engineering measures \cite{forristall_wave_2000}. Although classical second-order interaction theories exist for deep and finite depth \cite{longuet-higgins_eulerian_1986,dalzell_note_1999}, their direct evaluation can be computationally expensive for repeated use across many sea states and bandwidths, particularly when the free-surface potential is required in addition to surface elevation. Here, we benchmark the VWA against established second-order theory, and quantify performance across bandwidth and water depth using consistent error/similarity measures. The same framework is readily extendable to higher harmonics and directional wave groups where the speed of our proposed approach enables estimates for the bound harmonics to be made which would not otherwise be feasible.
+
+\paragraph{2 METHOD}$\quad$\\
+We focus on the second-order \emph{superharmonic} bound contributions to the free-surface elevation $\eta^{(22)}$ and the free-surface velocity potential $\phi_s^{(22)}$.  We first state the benchmark second-order interaction-theory kernels and their self/mutual decomposition, then show the deep-water unidirectional simplifications (flat kernels), and finally introduce the Variable Wavenumber Approximation (VWA). VWA reformulates the $\mathcal{O}(N^2)$ pairwise interaction evaluation into products of FFT-evaluable  signals; in practical implementations this reduces the cost to $\mathcal{O}(N\log N)$ and typically delivers speedups of several orders of magnitude (often thousands-fold) relative to direct exact-theory evaluation.
+
+
+
+\paragraph{2.1 Exact second-order interaction theory in deep water unidirectional wave (benchmark)}$\quad$\\
+To expose the kernel structure, consider two monochromatic components with amplitudes $A_1,A_2$, wavenumbers $k_1,k_2$, frequencies $\omega_j=\sqrt{g|k_j|}$, propagation directions $\beta_1,\beta_2$, and phases $\theta_j=k_jx-\omega_j t$. The second-order superharmonic contributions can be written as \cite{dalzell_note_1999,madsen_third-order_2012}
+\begin{align}
+\eta^{(22)} &= \frac{A_1^2|k_1|}{2}\cos(2\theta_1) + \frac{A_2^2|k_2|}{2}\cos(2\theta_2)
+            + A_1A_2\,G^\infty(k_1,k_2;\beta_1-\beta_2)\cos(\theta_1+\theta_2), \label{eq:eta22_two_comp}\\
+\phi_s^{(22)} &= -\frac{A_1^2\omega_1}{2}\sin(2\theta_1) - \frac{A_2^2\omega_2}{2}\sin(2\theta_2)
+            - A_1A_2\,\mu^\infty(k_1,k_2;\beta_1-\beta_2)\sin(\theta_1+\theta_2). \label{eq:phis22_two_comp}
+\end{align}
+The first two terms in each expression are \emph{self-interactions} ($k_1=k_2$), while the third term is the \emph{mutual interaction} ($k_1\neq k_2$) governed by the kernels $G^\infty$ and $\mu^\infty$ for $\eta^{(22)}$ and $\phi_s^{(22)}$, respectively. For a general polychromatic wave field, the second-order forcing is bilinear in the linear components; hence the full superharmonic response is obtained by linear superposition over all component pairs, which leads to the familiar double-integral (or double-sum) representation with $\mathcal{O}(N^2)$ cost.
+
+\paragraph{2.2 Free-surface velocity potential vs.\ Stokes harmonics}$\quad$\\
+We define the free-surface velocity potential as $\phi_s(x,t)=\phi(x,\eta(x,t),t)$, i.e.\ the velocity potential evaluated at the free surface. A Taylor expansion about $z=0$ gives
+$\phi_s=\phi|_{z=0}+\eta\,\partial_z\phi|_{z=0}+\cdots$,
+so that
+\begin{equation}\label{eq:phis22_def}
+\phi_s^{(22)}=\Big(\phi^{(22)}+\eta^{(11)}\partial_z\phi^{(11)}\Big)^{(22)}\Big|_{z=0}.
+\end{equation}
+This is distinct from the traditional Stokes-wave velocity potential for superharmonics $\phi^{(nn)}$: even when a velocity potential vanishes at the surface in deep-water unidirectional waves, the \emph{surface-evaluation} term $\big(\eta^{(11)}\partial_z\phi^{(11)}\big)^{(22)}$ can still generate a nonzero $\phi_s^{(22)}$.
+
+\paragraph{2.3 Deep-water unidirectional simplification (flat kernels)}$\quad$\\
+$G^{\infty},\mu^{\infty}$ are two-dimensional for deep water wave in general, but for the unidirectional wave where ($\beta_1=\beta_2$), it becomes a one-dimensional flat function of $k_1+k_2$
+\begin{equation}\label{eq:flat_kernel_eta}
+G^\infty(k_1,k_2)=\frac{k_1+k_2}{2}.
+\end{equation}
+In the same limit, the mutual-interaction kernel for the free-surface potential reduces to the flat sum-frequency form \cite{madsen_third-order_2012}
+\begin{equation}\label{eq:flat_kernel_phis_mu}
+\mu^\infty(k_1,k_2)=-\frac{\omega_1+\omega_2}{2}.
+\end{equation}
+This emphasis on output-mode dependence and (approximate) flatness of transfer functions in directions orthogonal to the leading diagonal is closely related to the kernel-structure arguments discussed by \cite{zhao_gap_2021}.
+
+
+
+
+\paragraph{2.4 VWA evaluation (FFT-evaluable reformulation)}$\quad$\\
+VWA exploits the flat-kernel structure in \cref{eq:flat_kernel_eta,eq:flat_kernel_phis_mu} by replacing explicit pairwise summation with products of filtered analytic signals. Define the analytic signal of the linear elevation
+
+\begin{equation}\label{eq:eta_star}
+\eta^{*(11)}(x,t)=\int_{0}^{\infty}A(k_1)\,e^{i(k_1x-\omega_1 t)}\,{\rm d}k_1,
+\end{equation}
+and the weighted signal
+\begin{equation}\label{eq:k_eta_star}
+(G_{2n}^{\rm VWA}\eta^{*(11)})(x,t)=\int_{0}^{\infty}G_{2n}^{\rm VWA}(k_2)\,\,A(k_2)\,e^{i(k_2x-\omega_2 t)}\,{\rm d}k_2,
+\end{equation}
+with $G_{2n}^{\rm VWA}=1/2k_n$ in deep water. The VWA superharmonic elevation is then
+\begin{equation}\label{eq:eta22_vwa}
+\eta_{\rm VWA}^{(22)}(x,t)=\Re\left\{\eta^{*(11)}(x,t)\,(G_{2n}^{\rm VWA}\eta^{*(11)})(x,t)\right\}.
+\end{equation}
+Expanding \cref{eq:eta22_vwa} yields a symmetric double integral; by symmetry the one-sided weight $k_2$ can be replaced by $(k_1+k_2)/2$ without changing the integral value, recovering exactly the flat kernel \cref{eq:flat_kernel_eta}. Thus, in unidirectional deep water, VWA is an exact reformulation of the benchmark superharmonic elevation with $\mathcal{O}(N\log N)$ FFT evaluation.
+
+For the free-surface potential, we use the same construction with a frequency-weighted filter
+\begin{equation}\label{eq:k_phi_star}
+(\mu_{2n}^{\rm VWA}\phi^{*(11)})(x,t)=\int_{0}^{\infty}\mu_{2n}^{\rm VWA}(k_2)\,\,A(k_2)\,e^{i(k_2x-\omega_2 t)}\,{\rm d}k_2,
+\end{equation}
+and compute
+\begin{equation}\label{eq:phis22_vwa}
+\phi^{(22)}_{s,{\rm VWA}}(x,t)=\Re\left\{\eta^{*(11)}(x,t)\,(\mu_{2n}^{\rm VWA}\phi^{*(11)})(x,t)\right\}.
+\end{equation}
+In deep-water unidirectional waves $\mu_{2n}^{\rm VWA}=-\omega_n/2$, so the same symmetry argument yields the exact mutual-interaction kernel \cref{eq:flat_kernel_phis_mu}.
+
+
+
+\paragraph{2.5 Finite-depth extension}$\quad$\\
+We briefly set out the extension to finite depth. The exact second-order kernels are no longer flat, so VWA is not expected to remain exact. We retain the same convolution structure but use depth-dependent Stokes-type coefficients\cite{madsen_third-order_2012,zhao_stokes_2022}:
+\emph{for $\eta^{(22)}$}, $G_{2n}^{\rm VWA}(k,d)=\dfrac{3-\tanh^2(kd)}{4\,\tanh^3(kd)}$; 
+\emph{for $\phi_s^{(22)}$}, $\mu_{2n}^{\rm VWA}(k,d)= -\dfrac{\omega}{2}-\dfrac{3\omega}{8}\dfrac{\cosh(2kd)}{\sinh^4(kd)}$.
+Unlike deep water, $\phi^{(22)}|_{z=0}$ does not generally vanish in finite depth and is therefore retained in the finite-depth formulation. Accuracy is assessed against established finite-depth second-order kernels across bandwidth and depth as in \cref{fig:2ndkernelratio}.
+
+\paragraph{3 RESULT}$\quad$\\
+Long-crested focused wave groups are generated from the semi-Gaussian spectrum following \cite{liu_phase_2025}. Bandwidth is controlled by $\alpha$ via $S(2k_p)/S(k_p)=10^{-\alpha}$, so larger $\alpha$ corresponds to a narrower spectrum (e.g.\ $\alpha=8$ narrow-band, $\alpha=1$ broad-band).
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.8\linewidth]{iwwwfb40_latex_template/figures/2ndeta_phi_kernel_ratio_comparison.png} 
+  \caption{Ratio of kernel functions for second-order surface elevation $G_{n+m}$ and surface velocity potential $\mu_{n+m}$ across different wavenumber ratios and water depth. Here, the superscript exact theory refers to the second order theory in \cite{madsen_third-order_2012}. }
+  \label{fig:2ndkernelratio}
+\end{figure}
+
+Figure~\ref{fig:2ndkernelratio} compares VWA and exact-theory mutual-interaction kernels for $\eta^{(22)}$ and $\phi_s^{(22)}$. The ratios converge to unity in deep water and as $k_2/k_1\to 1$, while finite depth and larger component separation introduce increasing deviations, more pronounced for the potential kernel. Consistent with this trend, the representative waveforms in Figure~\ref{fig:res_eta22_superharmonic_uni} show near-indistinguishable agreement in deep water ($k_pd=5$, $\alpha=8$) and the largest discrepancies in the finite-depth broad-band case ($k_pd=1$, $\alpha=1$), especially for $\phi_s^{(22)}$.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{iwwwfb40_latex_template/figures/combined_plot_1x4.png} 
+  % \caption{Comparison of the second order harmonic for surface elevation between VWA and the existing theories.}
+  \caption{Second-order superharmonic bound-wave fields for unidirectional focused wave groups: (a,b) free-surface elevation $\eta^{(22)}$ and (c,d) free-surface velocity potential $\phi_s^{(22)}$, compared between VWA and the benchmark second-order interaction theory (`Exact'), with additional models (NLS and Walker et al: narrow-band envelope-based reconstructions; Creamer: a deep-water nonlinear mapping for superharmonic \cite{trulsen_modified_1996,walker_shape_2004,creamer_improved_1989}). shown where available. Surface elevation results are normalized by $A^2k_p$, and surface velocity potential results by $A^2k_pg/\omega_p$, and are plotted versus $x/\lambda_p$. The deep-water, narrow-band case ($k_pd=5$, $\alpha=8$; best case) is shown in (a,c), and the finite-depth, broad-band case ($k_pd=1$, $\alpha=1$; worst case) in (b,d). Insets in (a,b) zoom the crest region and a representative side-lobe interval to highlight local discrepancies among the models.}
+  % \label{fig:result}
+  \label{fig:res_eta22_superharmonic_uni}
+\end{figure}
+
+To quantify bandwidth dependence, Figure~\ref{fig:res_Q_alpha_2nd_uni} plots the surface-similarity parameter $Q$ versus $\alpha$, defined by
+\[
+Q(f)=\left(\frac{\int (f-f_{\mathrm{ref}})^2\,\mathrm{d}x}{\int f_{\mathrm{ref}}^2\,\mathrm{d}x}\right)^{1/2},
+\]
+with the exact second-order interaction theory as reference ($f_{\mathrm{ref}}$). Smaller $Q$ means better agreement. VWA yields consistently low $Q$ in deep water across all $\alpha$, whereas in finite depth $Q$ increases as the spectrum broadens (smaller $\alpha$), with a stronger degradation for $\phi_s^{(22)}$ than for $\eta^{(22)}$.
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{iwwwfb40_latex_template/figures/combined_Q_vs_Alpha_1x4.png} 
+  % \caption{Comparison of the second order harmonic for surface elevation between VWA and the existing theories.}
+\caption{Bandwidth dependence of the surface-similarity parameter $Q$ for second-order superharmonic bound fields in unidirectional focused wave groups. Panels (a,b) show $Q(\eta^{(22)})$ for the surface elevation and panels (c,d) show $Q(\phi_s^{(22)})$ for the surface velocity potential, with the benchmark second-order interaction theory in\cite{madsen_third-order_2012} taken as reference. Results are plotted versus bandwidth parameter $\alpha$ for deep water ($k_pd=5$; panels a,c) and finite depth ($k_pd=1$; panels b,d). The starred markers indicate the representative cases shown in the corresponding waveform comparisons in \cref{fig:res_eta22_superharmonic_uni}.}
+  % \label{fig:result}
+\label{fig:res_Q_alpha_2nd_uni}
+\end{figure}
+
+% \begin{table}
+%     \centering
+%     \caption{Comparison of computational time for calculating the second-order superharmonic surface elevation $\eta^{(22)}$. $N$ denotes the number of grid points, and $N_c$ represents the number of wave components retained in the exact theory \cite{madsen_third-order_2012} using an energy threshold $E_{\text{ret}}=99.99999\%$.}
+%     \label{tab:comp_speed}
+%     \footnotesize
+%     \setlength{\tabcolsep}{12pt}        % tighten column spacing (default ~6pt)
+%     \renewcommand{\arraystretch}{0.7} % tighten row spacing
+
+%     \resizebox{0.7\linewidth}{!}{%
+%     \begin{tabular}{ccccccc}
+%         \toprule
+%         $\alpha$ & $N$ & $\lambda_p/\Delta x$ & $N_c$ & Cost for VWA (s) & Cost for MF12 (s) & Speedup \\
+%         \midrule
+%         1 & 1024 & 19.2  & 126 & 0.000161 & 1.78  & 11063.38 \\
+%         1 & 2048 & 38.4  & 126 & 0.000237 & 2.06  & 8687.44  \\
+%         1 & 4096 & 76.9  & 126 & 0.000534 & 2.20  & 4122.07  \\
+%         1 & 8192 & 153.7 & 126 & 0.000693 & 3.30  & 4754.04  \\
+%         8 & 1024 & 19.2  & 66  & 0.000121 & 0.332 & 2746.52  \\
+%         8 & 2048 & 38.4  & 66  & 0.000198 & 0.439 & 2218.72  \\
+%         8 & 4096 & 76.9  & 66  & 0.000357 & 0.641 & 1797.22  \\
+%         8 & 8192 & 153.7 & 66  & 0.000669 & 0.922 & 1378.34  \\
+%         \bottomrule
+%     \end{tabular}%
+%     }
+% \end{table}
+
+
+\paragraph{4 CONCLUSIONS}$\quad$\\
+% We presented the Variable Wavenumber Approximation (VWA) as a fast and robust approach for computing second-order superharmonic bound contributions to both the surface elevation $\eta^{(22)}$ and the surface velocity potential $\phi_s^{(22)}$. For unidirectional deep-water wave groups, VWA is algebraically equivalent to the classical second-order interaction theory (flat kernel) while reducing the evaluation from explicit pairwise interactions to an FFT-evaluable convolution form, enabling rapid parameter sweeps.
+
+% Although this abstract reports results primarily for the second-order unidirectional case, the same framework has already been extended in our broader study to higher-order bound harmonics (up to fifth order) and to directionally spread wave groups. Across bandwidth variations, the present results show consistently low error in deep water and increasing deviations in finite depth as the spectrum broadens, with $\phi_s^{(22)}$ generally more sensitive than $\eta^{(22)}$. These findings delineate the practical regime of accuracy for VWA and support its use as a computationally efficient alternative for reconstructing superharmonic bound wave in realistic wave-group applications.
+
+We present the Variable Wavenumber Approximation (VWA) as a fast and robust framework for computing second-order superharmonic bound waves to both the surface elevation $\eta^{(22)}$ and the surface velocity potential $\phi_s^{(22)}$. For unidirectional deep-water wave groups, VWA is algebraically equivalent to the classical second-order interaction theory (flat-kernel limit) while replacing explicit pairwise interactions with an FFT-evaluable convolution form, delivering orders-of-magnitude runtime reductions and enabling rapid parameter sweeps.
+
+Although the results shown here focus on second-order unidirectional cases, the VWA formulation itself extends directly to higher-order superharmonics (demonstrated up to fifth order in our broader study) and to directionally spread wave groups. Over bandwidth and depth variations, VWA remains highly accurate in deep water and exhibits increasing deviations in finite depth as the spectrum broadens. Overall, VWA provides a practical, computationally efficient route to reconstructing superharmonic bound wave in realistic wave-group applications.
+\begingroup
+\small
+\bibliography{iwwwfb40_latex_template/biblio}
+\endgroup
+
+\end{document}
+

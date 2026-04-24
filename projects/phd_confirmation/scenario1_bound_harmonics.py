@@ -30,6 +30,7 @@ C1  = BLUE
 C2P = ORANGE
 C2M = GREEN
 C3P = PURPLE
+C_BOUND = YELLOW
 
 # ── Spectral display (shifted log scale: y_display = log10(amp) − LOG_FLOOR) ──
 SK        = 0.18
@@ -104,39 +105,47 @@ class BoundHarmonicsIntro(Scene):
     def construct(self):
 
         # ── Title ──────────────────────────────────────────────────────────────
-        title = Text("Bound Harmonics in a Wave Group", font_size=26, weight=BOLD)
+        title = Text("Bound Harmonics in a Wave Group", font_size=30, weight=BOLD)
         title.to_edge(UP, buff=0.18)
         self.play(Write(title))
+        handoff = MathTex(
+            r"\text{Extra components from Scenario 0: organized, not noise.}",
+            font_size=24, color=GREY_B,
+        ).next_to(title, DOWN, buff=0.12)
+        self.play(Write(handoff))
+        self.wait(0.8)
 
         # ══ Spatial axes (left, top half) ═════════════════════════════════════
         ax_s = Axes(
             x_range=[-10, 10, 5],
-            y_range=[-0.50, 0.50, 0.25],
-            x_length=5.8,
-            y_length=2.5,
+            y_range=[-0.30, 0.30, 0.15],
+            x_length=6.45,
+            y_length=2.8,
             axis_config={"include_tip": False},
-            x_axis_config={"numbers_to_include": [-5, 0, 5]},
-            y_axis_config={"numbers_to_include": [-0.25, 0.0, 0.25]},
-        ).to_edge(LEFT, buff=0.85).shift(UP * 1.2)
+            x_axis_config={"numbers_to_include": [-5, 0, 5], "font_size": 28},
+            y_axis_config={"numbers_to_include": [-0.25, 0.0, 0.25], "font_size": 28},
+        ).to_edge(LEFT, buff=0.45).shift(UP * 0.92)
 
-        head_s = Text("Spatial  (group frame)", font_size=15, color=GREY_B).next_to(ax_s, UP, buff=0.30)
-        lab_xs = ax_s.get_x_axis_label(MathTex("x\\ (\\mathrm{m})", font_size=17))
-        lab_ys = ax_s.get_y_axis_label(MathTex("\\eta\\ (\\mathrm{m})", font_size=17))
+        head_s = Text("Spatial  (group frame)", font_size=18, color=GREY_B).next_to(ax_s, UP, buff=0.22)
+        lab_xs = ax_s.get_x_axis_label(MathTex("x\\ (\\mathrm{m})", font_size=21))
+        lab_ys = ax_s.get_y_axis_label(MathTex("\\eta\\ (\\mathrm{m})", font_size=21))
 
         # ══ Spectrum axes (right, top half) — x-axis at BOTTOM ════════════════
         ax_k = Axes(
             x_range=[0.0, 5.5, K0],
             y_range=[0.0, Y_SPEC, 1.0],        # y=0 is the bottom → k-axis at bottom
-            x_length=5.5,
-            y_length=2.5,
+            x_length=5.05,
+            y_length=2.45,
             axis_config={"include_tip": False},
             x_axis_config={"include_numbers": False},   # custom labels added below
             y_axis_config={"include_numbers": False},   # custom log labels added below
-        ).to_edge(RIGHT, buff=0.65).shift(UP * 1.2)
+        ).to_edge(RIGHT, buff=0.45).shift(UP * 0.92)
 
-        head_k = Text("Wavenumber spectrum  (log scale)", font_size=15, color=GREY_B).next_to(ax_k, UP, buff=0.08)
-        lab_xk = ax_k.get_x_axis_label(MathTex("k\\ (\\mathrm{rad\\,m^{-1}})", font_size=17))
-        lab_yk = ax_k.get_y_axis_label(MathTex("\\log_{10}|\\hat{\\eta}|", font_size=17))
+        head_k = Text("Wavenumber spectrum  (log scale)", font_size=17, color=GREY_B).next_to(ax_k, UP, buff=0.22)
+        lab_xk = ax_k.get_x_axis_label(MathTex("k\\ (\\mathrm{rad\\,m^{-1}})", font_size=19))
+        lab_yk = MathTex("\\log_{10}|\\hat{\\eta}|", font_size=18)\
+            .rotate(90 * DEGREES)\
+            .next_to(ax_k, LEFT, buff=0.45)
 
         # Log y-axis tick marks + labels  (10^{-2}, 10^{-1}, 10^{0})
         log_y_labels = VGroup()
@@ -144,14 +153,14 @@ class BoundHarmonicsIntro(Scene):
             pt = ax_k.c2p(0.0, y_d)
             log_y_labels.add(
                 Line(pt + LEFT * 0.10, pt, stroke_width=1.5),
-                MathTex(f"10^{{{exp}}}", font_size=14).next_to(pt + LEFT * 0.10, LEFT, buff=0.05),
+                MathTex(f"10^{{{exp}}}", font_size=16).next_to(pt + LEFT * 0.10, LEFT, buff=0.05),
             )
 
         # k x-axis labels — written progressively, stored separately
-        lbl_k0   = MathTex("k_0",         font_size=18, color=C1 ).next_to(ax_k.c2p(K0,    0), DOWN, buff=0.14)
-        lbl_2k0  = MathTex("2k_0",        font_size=18, color=C2P).next_to(ax_k.c2p(2*K0,  0), DOWN, buff=0.14)
-        lbl_setd = MathTex("k{\\approx}0", font_size=16, color=C2M).next_to(ax_k.c2p(0.20,  0), DOWN + RIGHT * 0.3, buff=0.13)
-        lbl_3k0  = MathTex("3k_0",        font_size=18, color=C3P).next_to(ax_k.c2p(3*K0,  0), DOWN, buff=0.14)
+        lbl_k0   = MathTex("k_0",         font_size=20, color=C1 ).next_to(ax_k.c2p(K0,    0), DOWN, buff=0.13)
+        lbl_2k0  = MathTex("2k_0",        font_size=20, color=C2P).next_to(ax_k.c2p(2*K0,  0), DOWN, buff=0.13)
+        lbl_setd = MathTex("k{\\approx}0", font_size=18, color=C2M).next_to(ax_k.c2p(0.20,  0), DOWN + RIGHT * 0.3, buff=0.12)
+        lbl_3k0  = MathTex("3k_0",        font_size=20, color=C3P).next_to(ax_k.c2p(3*K0,  0), DOWN, buff=0.13)
 
         # ── Draw axes ──────────────────────────────────────────────────────────
         self.play(
@@ -162,55 +171,49 @@ class BoundHarmonicsIntro(Scene):
                 lag_ratio=0.35,
             )
         )
-        self.wait(1.0)   # let audience orient to the two-panel layout
+        self.wait(0.6)   # quick re-orientation; Scenario 0 already introduced this layout
 
         # ══ Equation area (bottom half) ════════════════════════════════════════
-        # Label clarifying equations are written in lab-frame form
-        eq_frame_note = Text("equations in lab frame  (t = 0 shown above)",
-                             font_size=12, color=GREY_C)
-
-        EQ_TOP = -0.70
-        EQ_GAP =  0.55
+        EQ_TOP = -1.02
+        EQ_GAP =  0.50
 
         eq1 = MathTex(
             r"\eta_1 = A(x)\cos(k_0 x - \omega_0 t)",
-            font_size=22, color=C1,
+            font_size=24, color=C1,
         ).move_to([0, EQ_TOP, 0])
 
         eq2 = MathTex(
             r"\eta_2^+ = \tfrac{k_0}{2}A^2\cos\!\bigl(2(k_0 x - \omega_0 t)\bigr)",
-            font_size=22, color=C2P,
+            font_size=24, color=C2P,
         ).move_to([0, EQ_TOP - EQ_GAP, 0])
 
         eq3 = MathTex(
             r"\eta_2^- = -\tfrac{k_0}{2}A^2",
-            font_size=22, color=C2M,
+            font_size=24, color=C2M,
         ).move_to([0, EQ_TOP - 2 * EQ_GAP, 0])
 
         eq4 = MathTex(
             r"\eta_3^+ = \tfrac{3k_0^2}{8}A^3\cos\!\bigl(3(k_0 x - \omega_0 t)\bigr)",
-            font_size=22, color=C3P,
+            font_size=24, color=C3P,
         ).move_to([0, EQ_TOP - 3 * EQ_GAP, 0])
-
-        eq_frame_note.next_to(eq1, UP, buff=0.18)
 
         divider = Line(LEFT * 5.0, RIGHT * 5.0, stroke_width=1, color=GREY_D)
         divider.move_to([0, EQ_TOP - 3.55 * EQ_GAP, 0])
 
         eq_tot = VGroup(
-            MathTex(r"\eta\ =",   font_size=24),
-            MathTex(r"\eta_1",    font_size=24, color=C1),
-            MathTex(r"+",         font_size=24),
-            MathTex(r"\eta_2^+",  font_size=24, color=C2P),
-            MathTex(r"+",         font_size=24),
-            MathTex(r"\eta_2^-",  font_size=24, color=C2M),
-            MathTex(r"+",         font_size=24),
-            MathTex(r"\eta_3^+",  font_size=24, color=C3P),
+            MathTex(r"\eta\ =",   font_size=26),
+            MathTex(r"\eta_1",    font_size=26, color=C1),
+            MathTex(r"+",         font_size=26),
+            MathTex(r"\eta_2^+",  font_size=26, color=C2P),
+            MathTex(r"+",         font_size=26),
+            MathTex(r"\eta_2^-",  font_size=26, color=C2M),
+            MathTex(r"+",         font_size=26),
+            MathTex(r"\eta_3^+",  font_size=26, color=C3P),
         ).arrange(RIGHT, buff=0.14).move_to([-2.8, EQ_TOP - 3.85 * EQ_GAP, 0])
 
         eq_nl = MathTex(
             r"\eta_{\rm nl} = \eta_1 + \eta_2^+ + \eta_2^- + \eta_3^+",
-            font_size=24, color=YELLOW,
+            font_size=26, color=YELLOW,
         ).next_to(eq_tot, RIGHT, buff=0.45)
 
         # ══ ① Linear wave group ═══════════════════════════════════════════════
@@ -221,8 +224,8 @@ class BoundHarmonicsIntro(Scene):
 
         self.play(Create(c1), Create(envu), Create(envl))
         self.play(Create(pk1), Write(lbl_k0))
-        self.play(Write(eq_frame_note), Write(eq1))
-        self.wait(2.0)   # let audience read the equation and match it to the wave
+        self.play(Write(eq1))
+        self.wait(1.2)   # brief reminder; the new content starts with the bound terms
 
         # ══ ② 2nd-order super-harmonic ════════════════════════════════════════
         c2p  = ax_s.plot(lambda x: geta2p(x, 0), x_range=[-10, 10, 0.04], color=C2P,  stroke_width=2.0)
@@ -255,6 +258,7 @@ class BoundHarmonicsIntro(Scene):
         self.play(
             FadeOut(c1), FadeOut(envu), FadeOut(envl),
             FadeOut(c2p), FadeOut(c2m), FadeOut(c3p),
+            FadeOut(eq1), FadeOut(eq2), FadeOut(eq3), FadeOut(eq4),
         )
         self.play(Create(c_tot))
         self.wait(1.0)   # show crests sharper, troughs flatter before the sum equation
@@ -267,7 +271,7 @@ class BoundHarmonicsIntro(Scene):
         note = MathTex(
             r"\text{Group frame: envelope fixed,}\quad"
             r"\theta_g = k_0 x - \tfrac{\omega_0}{2}t",
-            font_size=16, color=YELLOW,
+            font_size=18, color=YELLOW,
         ).next_to(eq_tot, DOWN, buff=0.22)
         self.play(Write(note))
         self.wait(1.0)
@@ -277,7 +281,43 @@ class BoundHarmonicsIntro(Scene):
         # Static elements — time-independent in group frame
         s_envu = ax_s.plot(lambda x:  A * genv(x), x_range=[-10, 10, 0.08], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.45)
         s_envl = ax_s.plot(lambda x: -A * genv(x), x_range=[-10, 10, 0.08], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.45)
-        s_sd   = ax_s.plot(lambda x: geta2m(x),     x_range=[-10, 10, 0.06], color=C2M,   stroke_width=1.6)
+        # Separate display lane: this keeps the magnified bound terms visually
+        # below the main wave group instead of sharing the main eta-axis.
+        bound_x0, bound_x1 = -5.75, -0.72
+        bound_y0, bound_y1 = -1.50, -0.92
+        bound_xs = np.linspace(-10, 10, 360)
+
+        def bp(x, y):
+            alpha = (x + 10) / 20
+            beta = (y + 0.050) / 0.100
+            return np.array([
+                bound_x0 + alpha * (bound_x1 - bound_x0),
+                bound_y0 + beta * (bound_y1 - bound_y0),
+                0,
+            ])
+
+        def bound_curve(func, color, stroke_width=2.2, dashed=False):
+            curve = VMobject(color=color, stroke_width=stroke_width)
+            curve.set_points_smoothly([bp(x, func(x)) for x in bound_xs])
+            if dashed:
+                return DashedVMobject(curve, num_dashes=34, dashed_ratio=0.42)
+            return curve
+
+        bound_frame = Rectangle(
+            width=bound_x1 - bound_x0,
+            height=bound_y1 - bound_y0,
+            stroke_width=1.0,
+            stroke_color=GREY_D,
+            stroke_opacity=0.55,
+            fill_color=BLACK,
+            fill_opacity=0.0,
+        ).move_to([(bound_x0 + bound_x1) / 2, (bound_y0 + bound_y1) / 2, 0])
+        bound_base = DashedLine(
+            bp(-10, 0), bp(10, 0),
+            stroke_width=1.0, color=C_BOUND, dash_length=0.07, stroke_opacity=0.50,
+        )
+        bound_band_label = Text("bound components (magnified)", font_size=12, color=GREY_B)
+        bound_band_label.next_to(bound_frame, UP, buff=0.04).align_to(bound_frame, LEFT)
 
         # Dynamic: linear-only wave for comparison (dashed blue)
         live_eta1 = always_redraw(lambda: DashedVMobject(
@@ -288,6 +328,32 @@ class BoundHarmonicsIntro(Scene):
             num_dashes=35, dashed_ratio=0.5,
         ))
 
+        # Dynamic: individual bound components, vertically offset and magnified
+        # so their phase-locking to the group is visible in presentation.
+        live_2m = always_redraw(lambda: bound_curve(
+            lambda x: geta2m(x), C2M, stroke_width=2.5,
+        ))
+        live_2p = always_redraw(lambda: DashedVMobject(
+            bound_curve(lambda x: geta2p(x, t_val.get_value()), C2P, stroke_width=2.5),
+            num_dashes=28, dashed_ratio=0.45,
+        ))
+        live_3p = always_redraw(lambda: DashedVMobject(
+            bound_curve(lambda x: geta3p(x, t_val.get_value()), C3P, stroke_width=2.3),
+            num_dashes=32, dashed_ratio=0.38,
+        ))
+
+        bound_legend = VGroup(
+            VGroup(Line(LEFT * 0.18, RIGHT * 0.18, color=C2M, stroke_width=2.4),
+                   Text("2nd sub", font_size=11, color=C2M)).arrange(RIGHT, buff=0.05),
+            VGroup(DashedVMobject(Line(LEFT * 0.18, RIGHT * 0.18, color=C2P, stroke_width=2.4),
+                                  num_dashes=4, dashed_ratio=0.45),
+                   Text("2nd super", font_size=11, color=C2P)).arrange(RIGHT, buff=0.05),
+            VGroup(DashedVMobject(Line(LEFT * 0.18, RIGHT * 0.18, color=C3P, stroke_width=2.2),
+                                  num_dashes=4, dashed_ratio=0.38),
+                   Text("3rd super", font_size=11, color=C3P)).arrange(RIGHT, buff=0.05),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.06)
+        bound_legend.move_to([bound_x1 - 0.58, (bound_y0 + bound_y1) / 2, 0])
+
         # Dynamic: total nonlinear wave
         live_tot = always_redraw(lambda: ax_s.plot(
             lambda x: geta_tot(x, t_val.get_value()),
@@ -297,15 +363,20 @@ class BoundHarmonicsIntro(Scene):
         # Legend — placed inside ax_s, upper-right (shifted inward from edge)
         legend = VGroup(
             VGroup(Line(LEFT * 0.22, RIGHT * 0.22, color=WHITE, stroke_width=2.8),
-                   Text("nonlinear", font_size=11, color=WHITE)).arrange(RIGHT, buff=0.06),
+                   Text("nonlinear", font_size=13, color=WHITE)).arrange(RIGHT, buff=0.06),
             VGroup(DashedVMobject(Line(LEFT * 0.22, RIGHT * 0.22, color=C1, stroke_width=2.8),
                                   num_dashes=5, dashed_ratio=0.5),
-                   Text("linear  η₁", font_size=11, color=C1)).arrange(RIGHT, buff=0.06),
+                   Text("linear  η₁", font_size=13, color=C1)).arrange(RIGHT, buff=0.06),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.10)
-        legend.move_to(ax_s.c2p(5.5, 0.37))   # shifted inward from 6.8 to 5.5
+        legend.move_to(ax_s.c2p(5.0, 0.22))
 
         self.remove(c_tot)
-        self.add(s_envu, s_envl, s_sd, live_eta1, live_tot)
+        self.add(
+            s_envu, s_envl,
+            bound_frame, bound_base, bound_band_label,
+            live_2m, live_2p, live_3p, bound_legend,
+            live_eta1, live_tot,
+        )
         self.play(FadeIn(legend))
         self.wait(0.5)
         # Run ~2.5 carrier periods so the audience can see the locked co-travel clearly
@@ -318,10 +389,10 @@ class BoundHarmonicsIntro(Scene):
         self.wait(1.0)
 
         takeaway = VGroup(
-            Text("Bound harmonics  ≠  free waves", font_size=19, color=YELLOW, weight=BOLD),
-            Text("They do not satisfy the dispersion relation independently —", font_size=16, color=GREY_A),
-            Text("they are slaved to the primary wave group.", font_size=16, color=GREY_A),
+            Text("Bound harmonics  ≠  free waves", font_size=22, color=YELLOW, weight=BOLD),
+            Text("They do not satisfy the dispersion relation independently —", font_size=18, color=GREY_A),
+            Text("they are slaved to the primary wave group.", font_size=18, color=GREY_A),
         ).arrange(DOWN, buff=0.14, aligned_edge=LEFT)
-        takeaway.to_corner(DR, buff=0.45)
+        takeaway.move_to([3.35, -1.55, 0])
         self.play(Write(takeaway))
         self.wait(4.0)   # hold on the key message

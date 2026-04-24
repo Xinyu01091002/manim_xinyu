@@ -14,6 +14,19 @@ cd projects/<project-name>
 manim -pql <script>.py <SceneName>
 ```
 
+## Known Local Windows Environment
+
+On this machine, the working ManimCE install is:
+
+- Manim executable: `C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim`
+- Python for helper scripts: `C:\Users\spet5947\AppData\Local\anaconda3\python.exe`
+- TeX path to keep on `PATH`: `C:\texlive\2023\bin\windows`
+
+Important:
+- The default `python` / `py` in the shell may point to other Python installs without Manim.
+- If `manim` is not on `PATH`, prefer calling the executable above directly instead of guessing which Python environment is active.
+- For stitched-video workflows that need `ffmpeg`, install `imageio-ffmpeg` into the same Anaconda Python if necessary.
+
 Notes:
 - Run Manim from the project directory so media output is written to that project's own `media/` folder.
 - For active development in this repo, low quality is the default unless a higher-quality render is explicitly needed.

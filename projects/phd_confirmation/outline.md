@@ -70,6 +70,87 @@ Goal: explain what the extra nonlinear components actually are, after Scenario 0
 
 ---
 
-## Scenario 2: Why Does the Approximation Work? (TBD)
+## Scenario 2: Why Exact Interactions Become Expensive
 
-## Scenario 3: Asymptotic Consistency with Exact Theory (TBD)
+Goal: explain why component-resolved bound-wave theory becomes computationally expensive before introducing VWA.
+
+### Qi - Setup
+- Start from a realistic linear wave group represented by many spectral components.
+- Write the linear component sum:
+  `eta^(11) = sum a_m cos(theta_m)`.
+
+### Cheng - Build
+- Show that second-order superharmonics arise from all component pairs:
+  `(k_m, k_n) -> k_m + k_n`.
+- Write the component-resolved second-order expression:
+  `eta_exact^(22) = sum_m sum_n a_m a_n G_{m+n}(k_m,k_n) cos(theta_m + theta_n)`.
+- Visualize the full pair interaction grid.
+
+### Zhuan - Core insight
+- Emphasize that the number of interactions grows as:
+  `N_c^2` for second order,
+  `N_c^3` for third order,
+  and `N_c^n` at order `n`.
+- The exact approach is accurate, but repeated evaluation becomes the bottleneck for broadband wave groups and higher-order harmonics.
+
+### He - Takeaway
+- The next method should preserve the physically important sum-phase structure while avoiding the full interaction grid.
+- Bridge to VWA:
+  `keep the phases, approximate the kernel amplitude, separate the sums`.
+
+### Visual / implementation notes
+- Current low-quality preview command:
+  `manim -ql scenario2_exact_interactions.py WhyExactInteractionsAreExpensive`
+
+---
+
+## Scenario 3: The VWA Idea (TBD)
+
+Goal: introduce the exact second-order superharmonic formulation and the VWA formulation side by side, so the kernel reduction and cost reduction are visible in one step.
+
+### Qi - Setup
+- Start from the exact second-order superharmonic expression:
+  `eta_exact^(22) = sum_m sum_n a_m a_n G_{m+n}(k_m,k_n) cos(theta_m + theta_n)`.
+- Remind the audience that the expensive part is the fully pair-dependent interaction kernel over all component pairs.
+
+### Cheng - Build
+- Introduce the VWA substitution as a reduced kernel representation built from monochromatic / Stokes-informed coefficients.
+- Keep the exact quadratic sum phase `theta_m + theta_n` visible during the comparison.
+- Show visually that the change is in the kernel amplitude representation, not in the superharmonic phase structure.
+
+### Zhuan - Core insight
+- Derive or reveal the separated / convolutional structure of the VWA second-order formulation.
+- Emphasize that the exact pairwise interaction grid is replaced by a reduced spectral synthesis structure.
+- Bridge directly from this structural reduction to FFT-based evaluation.
+
+### He - Takeaway
+- Summarize in this order:
+  1. exact theory: component-resolved and expensive
+  2. VWA: reduced kernel representation for the same second-order superharmonic problem
+  3. the algebra separates, enabling `O(N log N)` evaluation
+- Keep the wording modest at this stage:
+  introduce the reduced formulation first, then reserve the stronger claims about exact phase preservation and kernel-amplitude approximation for the following scene if needed.
+
+---
+
+## Scenario 4: What Is Preserved, What Is Approximated? (TBD)
+
+Goal: explain that VWA preserves the exact superharmonic phase structure and approximates only the interaction-kernel amplitude.
+
+---
+
+## Scenario 5: Higher-Order Extension and Validation Bridge (TBD)
+
+Goal: connect the compact VWA product form to second-, third-, fourth-, and fifth-order validation, then hand off to PPT result figures.
+
+---
+
+## Scenario 6: Future / Broader Uses of VWA (Draft)
+
+Goal: briefly record possible broader uses beyond the present animation sequence.
+
+Candidate directions:
+- Directional waves: extend the same kernel-reduction idea to directionally spread wave groups.
+- Time series: reconstruct bound harmonics directly from gauge records or temporal spectra where appropriate.
+- Surface kinematics: use VWA to estimate surface velocity potential and related kinematic quantities, not only free-surface elevation.
+- Inverse problems: use the fast forward model inside fitting, separation, or reconstruction workflows where repeated evaluations are required.
