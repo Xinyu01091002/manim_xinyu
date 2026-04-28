@@ -1,398 +1,275 @@
 """
-Scenario 1 — Bound Harmonics in a Wave Group  (v5)
-===================================================
-Changes from v4:
-  - A reduced 0.35 → 0.20 (ε ≈ 0.30, more physically realistic)
-  - Equations labelled "(lab frame)" to avoid confusion with group-frame animation
-  - Time-evolution note rewritten in MathTex with explicit group-frame phase
-  - eq1–eq4 fade out before eq_tot is revealed (cleaner 承→合 transition)
-  - 合 (Resolution) takeaway text added at the end — the key message
-  - Time evolution extended to t=15 (run_time=12) for multiple visible oscillations
-  - self.wait() durations increased throughout for better pacing
-  - Legend shifted inward to avoid axis-edge overlap
+Scenario 1 - What Are Bound Harmonics?
+======================================
+
+A compact continuation from Scenario 0:
+nonlinearity adds wave components that travel with the primary group.
+Those components are bound harmonics, not independent free waves.
 """
 
 from manim import *
 import numpy as np
+from presentation_nav import bottom_progress_nav
 
 g = 9.81
 
-# ── Physical parameters ────────────────────────────────────────────────────────
-K0      = 1.5           # carrier wavenumber  [rad/m]
-A       = 0.20          # amplitude           [m]   → ε = A·K0 ≈ 0.30
-SIGMA_X = 4.0           # group width (1σ)    [m]
-OMEGA0  = np.sqrt(g * K0)
-CG      = OMEGA0 / (2.0 * K0)
-EPS     = A * K0        # steepness ≈ 0.30
+K0 = 1.5
+A = 0.30
+SIGMA_X = 4.0
+OMEGA0 = np.sqrt(g * K0)
+CG = OMEGA0 / (2.0 * K0)
 
-# Colours
-C1  = BLUE
-C2P = ORANGE
-C2M = GREEN
-C3P = PURPLE
-C_BOUND = YELLOW
-
-# ── Spectral display (shifted log scale: y_display = log10(amp) − LOG_FLOOR) ──
-SK        = 0.18
-LOG_FLOOR = -2.0           # minimum log10 amplitude shown
-Y_SPEC    = -LOG_FLOOR + 0.25   # = 2.25, y_range top of spectrum axes
-GAMMA_JS  = 3.3            # JONSWAP peak-enhancement factor
-
-def _jonswap_raw(k, k_p):
-    """JONSWAP spectral density in k-space (deep water, unnormalised)."""
-    if k <= 1e-6:
-        return 0.0
-    omega   = np.sqrt(g * k)
-    omega_p = np.sqrt(g * k_p)
-    sigma   = 0.07 if omega <= omega_p else 0.09
-    base    = omega ** (-5) * np.exp(-1.25 * (omega_p / omega) ** 4)
-    peak    = GAMMA_JS ** np.exp(-0.5 * ((omega - omega_p) / (sigma * omega_p)) ** 2)
-    dw_dk   = np.sqrt(g / k) / 2.0   # |dω/dk| for ω = √(gk)
-    return float(base * peak * dw_dk)
-
-# Pre-compute per-peak JONSWAP normalisations (peak raw → 1)
-_JS_NORM_1 = max(_jonswap_raw(k, K0)   for k in np.linspace(0.3*K0,   3.0*K0,   1000))
-_JS_NORM_2 = max(_jonswap_raw(k, 2*K0) for k in np.linspace(0.6*K0,   6.0*K0,   1000))
-_JS_NORM_3 = max(_jonswap_raw(k, 3*K0) for k in np.linspace(0.9*K0,   9.0*K0,   1000))
-
-def _lspec_js(raw):
-    return max(np.log10(max(float(raw), 10 ** LOG_FLOOR)) - LOG_FLOOR, 0.0)
-
-def lspec_js(k):
-    """Primary JONSWAP peak at k₀ — peak displays at y = 2.0."""
-    return _lspec_js(_jonswap_raw(k, K0) / _JS_NORM_1)
-
-def lspec_js2p(k):
-    """2nd-order super-harmonic: JONSWAP centred at 2k₀, amplitude ~ ε."""
-    return _lspec_js(_jonswap_raw(k, 2*K0) / _JS_NORM_2 * EPS)
-
-def lspec_js3p(k):
-    """3rd-order super-harmonic: JONSWAP centred at 3k₀, amplitude ~ ε²."""
-    return _lspec_js(_jonswap_raw(k, 3*K0) / _JS_NORM_3 * EPS**2)
-
-def lspec_setdown(k):
-    """Set-down: broad-banded hump near k ≈ 0, amplitude ~ ε."""
-    raw = EPS * 0.8 * np.exp(-k**2 / (2.0 * 0.55**2))
-    return _lspec_js(raw)
+C_LINEAR = BLUE
+C_BOUND = ORANGE
+C_SETDOWN = GREEN
+C_THIRD = PURPLE
+C_NL = YELLOW
+C_MUTED = GREY_B
+C_PANEL = GREY_D
+SCENARIO1_SECONDS = 42.60
+SCENARIO1_SUBSCENARIOS = [
+    "linear component",
+    "bound components",
+    "shape change",
+    "locked group",
+    "handoff",
+]
 
 
-# ── Group-frame wave functions (envelope ALWAYS centred at x = 0) ─────────────
-# In the group frame the carrier phase is θ_g = k₀x − (ω₀/2)t  (Doppler shift).
-def genv(x):
-    return np.exp(-x ** 2 / (2.0 * SIGMA_X ** 2))
-
-def geta1(x, t=0):
-    return A * genv(x) * np.cos(K0 * x - OMEGA0 * t / 2)
-
-def geta2p(x, t=0):
-    """2nd-order super-harmonic  η₂⁺ = (k₀/2)·A²·cos(2θ_g)"""
-    return (K0 / 2) * A ** 2 * genv(x) ** 2 * np.cos(2 * (K0 * x - OMEGA0 * t / 2))
-
-def geta2m(x):
-    """2nd-order set-down  η₂⁻ = −(k₀/2)·A²  [time-independent in group frame]"""
-    return -(K0 / 2) * A ** 2 * genv(x) ** 2
-
-def geta3p(x, t=0):
-    """3rd-order super-harmonic  η₃⁺ = (3k₀²/8)·A³·cos(3θ_g)"""
-    return (3 * K0 ** 2 / 8) * A ** 3 * genv(x) ** 3 * np.cos(3 * (K0 * x - OMEGA0 * t / 2))
-
-def geta_tot(x, t=0):
-    return geta1(x, t) + geta2p(x, t) + geta2m(x) + geta3p(x, t)
+def env(x):
+    return np.exp(-x**2 / (2.0 * SIGMA_X**2))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+def theta(x, t):
+    # Group-frame phase: envelope is fixed while the carrier oscillates.
+    return K0 * x - 0.5 * OMEGA0 * t
+
+
+def eta1(x, t=0.0):
+    return A * env(x) * np.cos(theta(x, t))
+
+
+def eta2_plus(x, t=0.0):
+    return 0.5 * K0 * A**2 * env(x) ** 2 * np.cos(2.0 * theta(x, t))
+
+
+def eta2_minus(x):
+    return -0.5 * K0 * A**2 * env(x) ** 2
+
+
+def eta3_plus(x, t=0.0):
+    return (3.0 * K0**2 / 8.0) * A**3 * env(x) ** 3 * np.cos(3.0 * theta(x, t))
+
+
+def eta_bound(x, t=0.0):
+    return eta2_minus(x) + eta2_plus(x, t) + eta3_plus(x, t)
+
+
+def eta_total(x, t=0.0):
+    return eta1(x, t) + eta_bound(x, t)
+
+
+def gaussian(k, center, width, amp):
+    return amp * np.exp(-0.5 * ((k - center) / width) ** 2)
+
+
+def panel_box(mob, color=C_PANEL, opacity=0.08, buff=0.16):
+    return SurroundingRectangle(mob, color=color, buff=buff, corner_radius=0.08).set_fill(BLACK, opacity=opacity)
+
+
+def quiet_fade(mob, shift=DOWN * 0.03):
+    return FadeIn(mob, shift=shift)
+
+
 class BoundHarmonicsIntro(Scene):
     def construct(self):
+        title = Text("What did nonlinearity add?", font_size=36, weight=BOLD)
+        subtitle = Text("extra wave components that travel with the group", font_size=23, color=C_MUTED)
+        VGroup(title, subtitle).arrange(DOWN, buff=0.10).to_edge(UP, buff=0.18)
+        nav_progress = ValueTracker(0)
+        nav_progress.add_updater(
+            lambda tracker, dt: tracker.increment_value(len(SCENARIO1_SUBSCENARIOS) * dt / SCENARIO1_SECONDS)
+        )
+        nav = bottom_progress_nav(
+            1,
+            6,
+            "bound harmonics",
+            SCENARIO1_SUBSCENARIOS,
+            nav_progress,
+            accent=C_NL,
+        )
+        self.add(nav_progress, nav)
+        self.play(quiet_fade(title), quiet_fade(subtitle), run_time=0.7)
 
-        # ── Title ──────────────────────────────────────────────────────────────
-        title = Text("Bound Harmonics in a Wave Group", font_size=30, weight=BOLD)
-        title.to_edge(UP, buff=0.18)
-        self.play(Write(title))
-        handoff = MathTex(
-            r"\text{Extra components from Scenario 0: organized, not noise.}",
-            font_size=24, color=GREY_B,
-        ).next_to(title, DOWN, buff=0.12)
-        self.play(Write(handoff))
-        self.wait(0.8)
-
-        # ══ Spatial axes (left, top half) ═════════════════════════════════════
-        ax_s = Axes(
-            x_range=[-10, 10, 5],
-            y_range=[-0.30, 0.30, 0.15],
-            x_length=6.45,
-            y_length=2.8,
+        ax_x = Axes(
+            x_range=[-12, 12, 6],
+            y_range=[-0.40, 0.40, 0.20],
+            x_length=6.75,
+            y_length=2.65,
             axis_config={"include_tip": False},
-            x_axis_config={"numbers_to_include": [-5, 0, 5], "font_size": 28},
-            y_axis_config={"numbers_to_include": [-0.25, 0.0, 0.25], "font_size": 28},
-        ).to_edge(LEFT, buff=0.45).shift(UP * 0.92)
+            x_axis_config={"numbers_to_include": [-10, 0, 10], "font_size": 23},
+            y_axis_config={"numbers_to_include": [-0.2, 0.0, 0.2], "font_size": 21},
+        ).to_edge(LEFT, buff=0.58).shift(UP * 0.64)
 
-        head_s = Text("Spatial  (group frame)", font_size=18, color=GREY_B).next_to(ax_s, UP, buff=0.22)
-        lab_xs = ax_s.get_x_axis_label(MathTex("x\\ (\\mathrm{m})", font_size=21))
-        lab_ys = ax_s.get_y_axis_label(MathTex("\\eta\\ (\\mathrm{m})", font_size=21))
-
-        # ══ Spectrum axes (right, top half) — x-axis at BOTTOM ════════════════
         ax_k = Axes(
-            x_range=[0.0, 5.5, K0],
-            y_range=[0.0, Y_SPEC, 1.0],        # y=0 is the bottom → k-axis at bottom
-            x_length=5.05,
-            y_length=2.45,
+            x_range=[0.0, 5.6, 1.5],
+            y_range=[0.0, 1.15, 0.5],
+            x_length=4.35,
+            y_length=2.65,
             axis_config={"include_tip": False},
-            x_axis_config={"include_numbers": False},   # custom labels added below
-            y_axis_config={"include_numbers": False},   # custom log labels added below
-        ).to_edge(RIGHT, buff=0.45).shift(UP * 0.92)
+            x_axis_config={"include_numbers": False},
+            y_axis_config={"include_numbers": False},
+        ).to_edge(RIGHT, buff=0.52).shift(UP * 0.64)
 
-        head_k = Text("Wavenumber spectrum  (log scale)", font_size=17, color=GREY_B).next_to(ax_k, UP, buff=0.22)
-        lab_xk = ax_k.get_x_axis_label(MathTex("k\\ (\\mathrm{rad\\,m^{-1}})", font_size=19))
-        lab_yk = MathTex("\\log_{10}|\\hat{\\eta}|", font_size=18)\
-            .rotate(90 * DEGREES)\
-            .next_to(ax_k, LEFT, buff=0.45)
+        head_x = Text("wave group", font_size=24, color=C_MUTED).next_to(ax_x, UP, buff=0.18)
+        head_k = Text("wavenumber spectrum", font_size=24, color=C_MUTED).next_to(ax_k, UP, buff=0.18)
+        lab_x = ax_x.get_x_axis_label(MathTex("x", font_size=25))
+        lab_eta = ax_x.get_y_axis_label(MathTex(r"\eta", font_size=25))
+        lab_k = ax_k.get_x_axis_label(MathTex("k", font_size=25))
+        lab_spec = ax_k.get_y_axis_label(MathTex(r"|\hat\eta|", font_size=25))
 
-        # Log y-axis tick marks + labels  (10^{-2}, 10^{-1}, 10^{0})
-        log_y_labels = VGroup()
-        for y_d, exp in [(0, -2), (1, -1), (2, 0)]:
-            pt = ax_k.c2p(0.0, y_d)
-            log_y_labels.add(
-                Line(pt + LEFT * 0.10, pt, stroke_width=1.5),
-                MathTex(f"10^{{{exp}}}", font_size=16).next_to(pt + LEFT * 0.10, LEFT, buff=0.05),
-            )
-
-        # k x-axis labels — written progressively, stored separately
-        lbl_k0   = MathTex("k_0",         font_size=20, color=C1 ).next_to(ax_k.c2p(K0,    0), DOWN, buff=0.13)
-        lbl_2k0  = MathTex("2k_0",        font_size=20, color=C2P).next_to(ax_k.c2p(2*K0,  0), DOWN, buff=0.13)
-        lbl_setd = MathTex("k{\\approx}0", font_size=18, color=C2M).next_to(ax_k.c2p(0.20,  0), DOWN + RIGHT * 0.3, buff=0.12)
-        lbl_3k0  = MathTex("3k_0",        font_size=20, color=C3P).next_to(ax_k.c2p(3*K0,  0), DOWN, buff=0.13)
-
-        # ── Draw axes ──────────────────────────────────────────────────────────
         self.play(
             LaggedStart(
-                AnimationGroup(Create(ax_s), Write(lab_xs), Write(lab_ys), Write(head_s)),
-                AnimationGroup(Create(ax_k), Write(lab_xk), Write(lab_yk),
-                               Write(log_y_labels), Write(head_k)),
-                lag_ratio=0.35,
+                AnimationGroup(Create(ax_x), quiet_fade(head_x), quiet_fade(lab_x), quiet_fade(lab_eta)),
+                AnimationGroup(Create(ax_k), quiet_fade(head_k), quiet_fade(lab_k), quiet_fade(lab_spec)),
+                lag_ratio=0.22,
             )
         )
-        self.wait(0.6)   # quick re-orientation; Scenario 0 already introduced this layout
 
-        # ══ Equation area (bottom half) ════════════════════════════════════════
-        EQ_TOP = -1.02
-        EQ_GAP =  0.50
+        carrier = ax_x.plot(lambda x: eta1(x, 0), x_range=[-12, 12, 0.04], color=C_LINEAR, stroke_width=2.8)
+        env_u = ax_x.plot(lambda x: A * env(x), x_range=[-12, 12, 0.10], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.42)
+        env_l = ax_x.plot(lambda x: -A * env(x), x_range=[-12, 12, 0.10], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.42)
+        spec_1 = ax_k.plot(lambda k: gaussian(k, K0, 0.30, 1.0), x_range=[0.05, 5.6, 0.02], color=C_LINEAR, stroke_width=2.7)
+        k0_label = MathTex("k_0", font_size=24, color=C_LINEAR).next_to(ax_k.c2p(K0, 0), DOWN, buff=0.10)
 
-        eq1 = MathTex(
-            r"\eta_1 = A(x)\cos(k_0 x - \omega_0 t)",
-            font_size=24, color=C1,
-        ).move_to([0, EQ_TOP, 0])
+        linear_card = VGroup(
+            Text("linear theory", font_size=25, color=C_LINEAR),
+            Text("one free-wave component", font_size=21, color=WHITE),
+            MathTex(r"\eta_1", font_size=34, color=C_LINEAR),
+        ).arrange(DOWN, buff=0.10)
+        linear_card.to_edge(DOWN, buff=0.86)
 
-        eq2 = MathTex(
-            r"\eta_2^+ = \tfrac{k_0}{2}A^2\cos\!\bigl(2(k_0 x - \omega_0 t)\bigr)",
-            font_size=24, color=C2P,
-        ).move_to([0, EQ_TOP - EQ_GAP, 0])
+        self.play(Create(carrier), Create(env_u), Create(env_l))
+        self.play(Create(spec_1), quiet_fade(k0_label), quiet_fade(linear_card))
+        self.wait(1.6)
 
-        eq3 = MathTex(
-            r"\eta_2^- = -\tfrac{k_0}{2}A^2",
-            font_size=24, color=C2M,
-        ).move_to([0, EQ_TOP - 2 * EQ_GAP, 0])
+        bound_card = VGroup(
+            Text("nonlinear interactions", font_size=24, color=C_NL),
+            Text("create bound components", font_size=21, color=WHITE),
+            MathTex(r"\eta_{\rm bound}=\eta_2^-+\eta_2^+ + \eta_3^+", font_size=31, color=C_NL),
+        ).arrange(DOWN, buff=0.10).move_to(linear_card)
+        self.play(FadeOut(linear_card, run_time=0.3), quiet_fade(bound_card, shift=UP * 0.03))
 
-        eq4 = MathTex(
-            r"\eta_3^+ = \tfrac{3k_0^2}{8}A^3\cos\!\bigl(3(k_0 x - \omega_0 t)\bigr)",
-            font_size=24, color=C3P,
-        ).move_to([0, EQ_TOP - 3 * EQ_GAP, 0])
+        setdown = ax_x.plot(lambda x: eta2_minus(x), x_range=[-12, 12, 0.05], color=C_SETDOWN, stroke_width=2.7)
+        spec_0 = ax_k.plot(lambda k: gaussian(k, 0.25, 0.34, 0.34), x_range=[0.01, 2.0, 0.02], color=C_SETDOWN, stroke_width=2.5)
+        lbl_0 = MathTex(r"k\approx0", font_size=20, color=C_SETDOWN).next_to(ax_k.c2p(0.25, 0), DOWN + RIGHT * 0.25, buff=0.10)
+        tag_setdown = VGroup(
+            Text("set-down", font_size=21, color=C_SETDOWN),
+            MathTex(r"\eta_2^-", font_size=29, color=C_SETDOWN),
+        ).arrange(RIGHT, buff=0.14)
+        tag_setdown.move_to(ax_x.c2p(-6.9, 0.22))
+        self.play(Create(setdown), Create(spec_0), quiet_fade(lbl_0))
+        self.wait(1.6)
 
-        divider = Line(LEFT * 5.0, RIGHT * 5.0, stroke_width=1, color=GREY_D)
-        divider.move_to([0, EQ_TOP - 3.55 * EQ_GAP, 0])
+        second = ax_x.plot(lambda x: eta2_plus(x, 0), x_range=[-12, 12, 0.04], color=C_BOUND, stroke_width=2.5)
+        spec_2 = ax_k.plot(lambda k: gaussian(k, 2 * K0, 0.40, 0.44), x_range=[0.05, 5.6, 0.02], color=C_BOUND, stroke_width=2.5)
+        lbl_2 = MathTex("2k_0", font_size=23, color=C_BOUND).next_to(ax_k.c2p(2 * K0, 0), DOWN, buff=0.10)
+        tag_second = VGroup(
+            Text("second harmonic", font_size=21, color=C_BOUND),
+            MathTex(r"\eta_2^+", font_size=29, color=C_BOUND),
+        ).arrange(RIGHT, buff=0.14)
+        tag_second.move_to(ax_x.c2p(5.1, 0.26))
+        self.play(Create(second), Create(spec_2), quiet_fade(lbl_2))
+        self.wait(1.6)
 
-        eq_tot = VGroup(
-            MathTex(r"\eta\ =",   font_size=26),
-            MathTex(r"\eta_1",    font_size=26, color=C1),
-            MathTex(r"+",         font_size=26),
-            MathTex(r"\eta_2^+",  font_size=26, color=C2P),
-            MathTex(r"+",         font_size=26),
-            MathTex(r"\eta_2^-",  font_size=26, color=C2M),
-            MathTex(r"+",         font_size=26),
-            MathTex(r"\eta_3^+",  font_size=26, color=C3P),
-        ).arrange(RIGHT, buff=0.14).move_to([-2.8, EQ_TOP - 3.85 * EQ_GAP, 0])
+        third = ax_x.plot(lambda x: eta3_plus(x, 0), x_range=[-12, 12, 0.04], color=C_THIRD, stroke_width=2.3)
+        spec_3 = ax_k.plot(lambda k: gaussian(k, 3 * K0, 0.46, 0.20), x_range=[0.05, 5.6, 0.02], color=C_THIRD, stroke_width=2.5)
+        lbl_3 = MathTex("3k_0", font_size=23, color=C_THIRD).next_to(ax_k.c2p(3 * K0, 0), DOWN, buff=0.10)
+        tag_third = VGroup(
+            Text("higher harmonics", font_size=21, color=C_THIRD),
+            MathTex(r"\eta_3^+,\ldots", font_size=29, color=C_THIRD),
+        ).arrange(RIGHT, buff=0.14)
+        tag_third.move_to(ax_x.c2p(5.0, -0.25))
+        self.play(Create(third), Create(spec_3), quiet_fade(lbl_3))
+        self.wait(1.6)
 
-        eq_nl = MathTex(
-            r"\eta_{\rm nl} = \eta_1 + \eta_2^+ + \eta_2^- + \eta_3^+",
-            font_size=26, color=YELLOW,
-        ).next_to(eq_tot, RIGHT, buff=0.45)
+        total = ax_x.plot(lambda x: eta_total(x, 0), x_range=[-12, 12, 0.04], color=WHITE, stroke_width=3.0)
+        total_card = VGroup(
+            MathTex(r"\eta_{\rm nl}=\eta_1+\eta_{\rm bound}", font_size=34, color=WHITE),
+            Text("free component + bound components", font_size=21, color=C_MUTED),
+        ).arrange(DOWN, buff=0.10).move_to(bound_card)
 
-        # ══ ① Linear wave group ═══════════════════════════════════════════════
-        c1   = ax_s.plot(lambda x: geta1(x, 0),  x_range=[-10, 10, 0.04], color=C1,    stroke_width=2.5)
-        envu = ax_s.plot(lambda x:  A * genv(x), x_range=[-10, 10, 0.10], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.45)
-        envl = ax_s.plot(lambda x: -A * genv(x), x_range=[-10, 10, 0.10], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.45)
-        pk1  = ax_k.plot(lspec_js, x_range=[0.05, 5.5, 0.02], color=C1, stroke_width=2.5)
-
-        self.play(Create(c1), Create(envu), Create(envl))
-        self.play(Create(pk1), Write(lbl_k0))
-        self.play(Write(eq1))
-        self.wait(1.2)   # brief reminder; the new content starts with the bound terms
-
-        # ══ ② 2nd-order super-harmonic ════════════════════════════════════════
-        c2p  = ax_s.plot(lambda x: geta2p(x, 0), x_range=[-10, 10, 0.04], color=C2P,  stroke_width=2.0)
-        pk2p = ax_k.plot(lspec_js2p, x_range=[0.05, 5.5, 0.02], color=C2P, stroke_width=2.5)
-
-        self.play(Create(c2p), Create(pk2p), Write(lbl_2k0))
-        self.play(Write(eq2))
-        self.wait(2.0)   # note the new spectral peak at 2k₀
-
-        # ══ ③ 2nd-order set-down ══════════════════════════════════════════════
-        c2m  = ax_s.plot(lambda x: geta2m(x),    x_range=[-10, 10, 0.04], color=C2M,  stroke_width=2.0)
-        pk2m = ax_k.plot(lspec_setdown, x_range=[0.01, 3.0, 0.02], color=C2M, stroke_width=2.5)
-
-        self.play(Create(c2m), Create(pk2m), Write(lbl_setd))
-        self.play(Write(eq3))
-        self.wait(2.0)   # negative depression under the group is visible
-
-        # ══ ④ 3rd-order super-harmonic ════════════════════════════════════════
-        c3p  = ax_s.plot(lambda x: geta3p(x, 0), x_range=[-10, 10, 0.04], color=C3P,  stroke_width=1.8)
-        pk3p = ax_k.plot(lspec_js3p, x_range=[0.05, 5.5, 0.02], color=C3P, stroke_width=2.5)
-
-        self.play(Create(c3p), Create(pk3p), Write(lbl_3k0))
-        self.play(Write(eq4))
-        self.wait(2.0)   # small 3rd-order peak visible in spectrum
-
-        # ══ ⑤ Show total wave ═════════════════════════════════════════════════
-        c_tot = ax_s.plot(lambda x: geta_tot(x, 0), x_range=[-10, 10, 0.04], color=WHITE, stroke_width=2.8)
-
-        # Fade individual component curves and equations; reveal total
         self.play(
-            FadeOut(c1), FadeOut(envu), FadeOut(envl),
-            FadeOut(c2p), FadeOut(c2m), FadeOut(c3p),
-            FadeOut(eq1), FadeOut(eq2), FadeOut(eq3), FadeOut(eq4),
+            ReplacementTransform(bound_card, total_card),
+            Create(total),
         )
-        self.play(Create(c_tot))
-        self.wait(1.0)   # show crests sharper, troughs flatter before the sum equation
-        self.play(Create(divider), Write(eq_tot), Write(eq_nl))
-        self.wait(2.5)   # let audience appreciate the full superposition
+        self.wait(1.8)
 
-        # ══ ⑥ Time evolution in group frame ═══════════════════════════════════
-        # Note: in the group frame the carrier Doppler-shifts to k₀x − (ω₀/2)t,
-        # so the envelope stays fixed while the carrier oscillates beneath it.
-        note = MathTex(
-            r"\text{Group frame: envelope fixed,}\quad"
-            r"\theta_g = k_0 x - \tfrac{\omega_0}{2}t",
-            font_size=18, color=YELLOW,
-        ).next_to(eq_tot, DOWN, buff=0.22)
-        self.play(Write(note))
-        self.wait(1.0)
+        crest_line = DashedLine(ax_x.c2p(-2.8, A), ax_x.c2p(2.8, A), color=C_LINEAR, stroke_width=1.2, dash_length=0.09)
+        crest_arrow = DoubleArrow(ax_x.c2p(0, A), ax_x.c2p(0, eta_total(0, 0)), color=C_NL, buff=0, stroke_width=2.2, tip_length=0.12)
+        shape_note = Text("bound terms reshape the group", font_size=21, color=C_NL)
+        shape_note.scale_to_fit_width(3.8)
+        shape_note.next_to(ax_k, DOWN, buff=0.36)
+        self.play(Create(crest_line), GrowArrow(crest_arrow), quiet_fade(shape_note))
+        self.wait(2.0)
 
-        t_val = ValueTracker(0.0)
-
-        # Static elements — time-independent in group frame
-        s_envu = ax_s.plot(lambda x:  A * genv(x), x_range=[-10, 10, 0.08], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.45)
-        s_envl = ax_s.plot(lambda x: -A * genv(x), x_range=[-10, 10, 0.08], color=BLUE_A, stroke_width=1.0, stroke_opacity=0.45)
-        # Separate display lane: this keeps the magnified bound terms visually
-        # below the main wave group instead of sharing the main eta-axis.
-        bound_x0, bound_x1 = -5.75, -0.72
-        bound_y0, bound_y1 = -1.50, -0.92
-        bound_xs = np.linspace(-10, 10, 360)
-
-        def bp(x, y):
-            alpha = (x + 10) / 20
-            beta = (y + 0.050) / 0.100
-            return np.array([
-                bound_x0 + alpha * (bound_x1 - bound_x0),
-                bound_y0 + beta * (bound_y1 - bound_y0),
-                0,
-            ])
-
-        def bound_curve(func, color, stroke_width=2.2, dashed=False):
-            curve = VMobject(color=color, stroke_width=stroke_width)
-            curve.set_points_smoothly([bp(x, func(x)) for x in bound_xs])
-            if dashed:
-                return DashedVMobject(curve, num_dashes=34, dashed_ratio=0.42)
-            return curve
-
-        bound_frame = Rectangle(
-            width=bound_x1 - bound_x0,
-            height=bound_y1 - bound_y0,
-            stroke_width=1.0,
-            stroke_color=GREY_D,
-            stroke_opacity=0.55,
-            fill_color=BLACK,
-            fill_opacity=0.0,
-        ).move_to([(bound_x0 + bound_x1) / 2, (bound_y0 + bound_y1) / 2, 0])
-        bound_base = DashedLine(
-            bp(-10, 0), bp(10, 0),
-            stroke_width=1.0, color=C_BOUND, dash_length=0.07, stroke_opacity=0.50,
+        self.play(
+            FadeOut(crest_line),
+            FadeOut(crest_arrow),
+            FadeOut(shape_note),
+            FadeOut(carrier),
+            FadeOut(env_u),
+            FadeOut(env_l),
+            FadeOut(setdown),
+            FadeOut(second),
+            FadeOut(third),
         )
-        bound_band_label = Text("bound components (magnified)", font_size=12, color=GREY_B)
-        bound_band_label.next_to(bound_frame, UP, buff=0.04).align_to(bound_frame, LEFT)
 
-        # Dynamic: linear-only wave for comparison (dashed blue)
-        live_eta1 = always_redraw(lambda: DashedVMobject(
-            ax_s.plot(
-                lambda x: geta1(x, t_val.get_value()),
-                x_range=[-10, 10, 0.05], color=C1, stroke_width=2.8,
-            ),
-            num_dashes=35, dashed_ratio=0.5,
-        ))
-
-        # Dynamic: individual bound components, vertically offset and magnified
-        # so their phase-locking to the group is visible in presentation.
-        live_2m = always_redraw(lambda: bound_curve(
-            lambda x: geta2m(x), C2M, stroke_width=2.5,
-        ))
-        live_2p = always_redraw(lambda: DashedVMobject(
-            bound_curve(lambda x: geta2p(x, t_val.get_value()), C2P, stroke_width=2.5),
-            num_dashes=28, dashed_ratio=0.45,
-        ))
-        live_3p = always_redraw(lambda: DashedVMobject(
-            bound_curve(lambda x: geta3p(x, t_val.get_value()), C3P, stroke_width=2.3),
-            num_dashes=32, dashed_ratio=0.38,
-        ))
-
-        bound_legend = VGroup(
-            VGroup(Line(LEFT * 0.18, RIGHT * 0.18, color=C2M, stroke_width=2.4),
-                   Text("2nd sub", font_size=11, color=C2M)).arrange(RIGHT, buff=0.05),
-            VGroup(DashedVMobject(Line(LEFT * 0.18, RIGHT * 0.18, color=C2P, stroke_width=2.4),
-                                  num_dashes=4, dashed_ratio=0.45),
-                   Text("2nd super", font_size=11, color=C2P)).arrange(RIGHT, buff=0.05),
-            VGroup(DashedVMobject(Line(LEFT * 0.18, RIGHT * 0.18, color=C3P, stroke_width=2.2),
-                                  num_dashes=4, dashed_ratio=0.38),
-                   Text("3rd super", font_size=11, color=C3P)).arrange(RIGHT, buff=0.05),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.06)
-        bound_legend.move_to([bound_x1 - 0.58, (bound_y0 + bound_y1) / 2, 0])
-
-        # Dynamic: total nonlinear wave
-        live_tot = always_redraw(lambda: ax_s.plot(
-            lambda x: geta_tot(x, t_val.get_value()),
-            x_range=[-10, 10, 0.05], color=WHITE, stroke_width=2.8,
-        ))
-
-        # Legend — placed inside ax_s, upper-right (shifted inward from edge)
-        legend = VGroup(
-            VGroup(Line(LEFT * 0.22, RIGHT * 0.22, color=WHITE, stroke_width=2.8),
-                   Text("nonlinear", font_size=13, color=WHITE)).arrange(RIGHT, buff=0.06),
-            VGroup(DashedVMobject(Line(LEFT * 0.22, RIGHT * 0.22, color=C1, stroke_width=2.8),
-                                  num_dashes=5, dashed_ratio=0.5),
-                   Text("linear  η₁", font_size=13, color=C1)).arrange(RIGHT, buff=0.06),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.10)
-        legend.move_to(ax_s.c2p(5.0, 0.22))
-
-        self.remove(c_tot)
-        self.add(
-            s_envu, s_envl,
-            bound_frame, bound_base, bound_band_label,
-            live_2m, live_2p, live_3p, bound_legend,
-            live_eta1, live_tot,
+        t = ValueTracker(0.0)
+        live_carrier = always_redraw(
+            lambda: ax_x.plot(lambda x: eta1(x, t.get_value()), x_range=[-12, 12, 0.05], color=C_LINEAR, stroke_width=2.2)
         )
-        self.play(FadeIn(legend))
-        self.wait(0.5)
-        # Run ~2.5 carrier periods so the audience can see the locked co-travel clearly
-        self.play(t_val.animate.set_value(15.0), run_time=12, rate_func=linear)
-        self.wait(1.0)
+        live_bound = always_redraw(
+            lambda: ax_x.plot(lambda x: eta_bound(x, t.get_value()), x_range=[-12, 12, 0.05], color=C_NL, stroke_width=2.4)
+        )
+        live_total = always_redraw(
+            lambda: ax_x.plot(lambda x: eta_total(x, t.get_value()), x_range=[-12, 12, 0.05], color=WHITE, stroke_width=2.9)
+        )
+        group_window = SurroundingRectangle(ax_x, color=C_NL, buff=0.10, corner_radius=0.07)
+        lock_note = VGroup(
+            Text("bound components", font_size=23, color=C_NL),
+            Text("stay inside the moving group", font_size=21, color=WHITE),
+        ).arrange(DOWN, buff=0.08)
+        lock_note.scale_to_fit_width(4.2)
+        lock_note.next_to(ax_k, DOWN, buff=0.36)
+        lock_box = panel_box(lock_note, color=C_NL, opacity=0.12, buff=0.16)
 
-        # ══ ⑦ 合 — Resolution: highlight sum and deliver takeaway ══════════════
-        box = SurroundingRectangle(VGroup(eq_tot, eq_nl), color=YELLOW, buff=0.10, corner_radius=0.07)
-        self.play(Create(box))
-        self.wait(1.0)
+        self.remove(total)
+        self.add(live_carrier, live_bound, live_total)
+        self.play(Create(group_window), FadeIn(lock_box), quiet_fade(lock_note))
+        self.play(t.animate.set_value(12.0), run_time=11.0, rate_func=linear)
+        self.wait(1.6)
 
-        takeaway = VGroup(
-            Text("Bound harmonics  ≠  free waves", font_size=22, color=YELLOW, weight=BOLD),
-            Text("They do not satisfy the dispersion relation independently —", font_size=18, color=GREY_A),
-            Text("they are slaved to the primary wave group.", font_size=18, color=GREY_A),
-        ).arrange(DOWN, buff=0.14, aligned_edge=LEFT)
-        takeaway.move_to([3.35, -1.55, 0])
-        self.play(Write(takeaway))
-        self.wait(4.0)   # hold on the key message
+        self.play(
+            FadeOut(VGroup(
+                title, subtitle, ax_x, ax_k, head_x, head_k, lab_x, lab_eta, lab_k, lab_spec,
+                live_carrier, live_bound, live_total, group_window, lock_box, lock_note,
+                spec_1, spec_0, spec_2, spec_3, k0_label, lbl_0, lbl_2, lbl_3, total_card,
+            )),
+            run_time=0.8,
+        )
+
+        end_question = Text("Bound harmonics are not independent free waves.", font_size=32, weight=BOLD, color=WHITE)
+        end_answer = VGroup(
+            Text("They are generated by nonlinear interactions", font_size=26, color=C_MUTED),
+            Text("and remain tied to the primary group.", font_size=26, color=C_MUTED),
+        ).arrange(DOWN, buff=0.10)
+        next_scene = Text("Next: how expensive is exact interaction theory?", font_size=25, color=C_BOUND)
+        ending = VGroup(end_question, end_answer, next_scene).arrange(DOWN, buff=0.34).move_to(ORIGIN)
+        ending.scale_to_fit_width(11.0)
+
+        self.play(quiet_fade(end_question), run_time=0.6)
+        self.play(quiet_fade(end_answer), run_time=0.6)
+        self.play(quiet_fade(next_scene), run_time=0.6)
+        self.wait(5.2)
+        nav_progress.clear_updaters()

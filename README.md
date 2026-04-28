@@ -4,8 +4,9 @@ Personal collection of Manim animation scripts.
 
 ## Structure
 
-- `projects/` — individual animation projects
-- `skills/` — Manim best practice guides for AI coding assistants (sourced from [adithya-s-k/manim_skill](https://github.com/adithya-s-k/manim_skill))
+- `projects/` - individual animation projects
+- `skills/` - Manim best practice guides for AI coding assistants, sourced from
+  [adithya-s-k/manim_skill](https://github.com/adithya-s-k/manim_skill)
 
 ## Running a project
 
@@ -14,39 +15,89 @@ cd projects/<project-name>
 manim -pql <script>.py <SceneName>
 ```
 
+## Animation Style
+
+For presentation animations in this repo, keep text motion restrained. Prefer
+simple `FadeIn`, `Write`, or static placement for titles, labels, equations, and
+takeaways. Save richer animation for visual mechanisms that help understanding:
+wave evolution, transforms, phase matching, probes, kernel comparisons, arrows,
+and diagrams. Avoid decorative text entrances that pull attention away from the
+scientific content.
+
+Recurring UI, especially presentation navigation, should be built once and
+updated through small state changes. Do not rebuild text-heavy navigation with
+`always_redraw`.
+
 ## Known Local Windows Environment
 
 On this machine, the working ManimCE install is:
 
 - Manim executable: `C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim`
 - Python for helper scripts: `C:\Users\spet5947\AppData\Local\anaconda3\python.exe`
-- TeX path to keep on `PATH`: `C:\texlive\2023\bin\windows`
+- TeX/LaTeX path required by Manim `MathTex`: `C:\texlive\2023\bin\windows`
+- ffmpeg used for video stitching: `C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe`
 
 Important:
-- The default `python` / `py` in the shell may point to other Python installs without Manim.
-- If `manim` is not on `PATH`, prefer calling the executable above directly instead of guessing which Python environment is active.
-- For stitched-video workflows that need `ffmpeg`, install `imageio-ffmpeg` into the same Anaconda Python if necessary.
 
-Notes:
-- Run Manim from the project directory so media output is written to that project's own `media/` folder.
-- For active development in this repo, low quality is the default unless a higher-quality render is explicitly needed.
+- The default `python` / `py` in the shell may point to other Python installs
+  without Manim.
+- If `manim` is not on `PATH`, prefer calling the executable above directly
+  instead of guessing which Python environment is active.
+- If `MathTex` fails with `FileNotFoundError` for `latex.exe`, prepend the TeX
+  Live path in the current PowerShell session:
 
-## Skills
-
-The `skills/` directory contains best practice rule files for ManimCE and ManimGL.
-These are automatically picked up by AI coding assistants to provide better Manim-specific guidance.
-
-## Current project note
-
-For `projects/phd_confirmation/`, the current workflow is:
-
-```bash
-cd projects/phd_confirmation
-manim -ql scenario0_why_nonlinear.py WhyNonlinearWaves
-manim -qh scenario0_why_nonlinear.py WhyNonlinearWaves
+```powershell
+$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
 ```
 
-This keeps the render outputs under `projects/phd_confirmation/media/` and matches the current presentation workflow.
+- For stitched-video workflows, set `IMAGEIO_FFMPEG_EXE` to the ffmpeg path
+  above.
+
+Notes:
+
+- Run Manim from the project directory so media output is written to that
+  project's own `media/` folder.
+- For active development in this repo, low quality is the default unless a
+  higher-quality render is explicitly needed.
+
+## PhD Confirmation Project
+
+Project-specific notes live in [projects/phd_confirmation/README.md](projects/phd_confirmation/README.md).
+
+Current final output:
+
+- Combined high-quality video:
+  `projects/phd_confirmation/media/videos/phd_confirmation_full_1080p60.mp4`
+- Quality: `1080p60`
+- Duration: `00:05:05.08`
+
+The presentation uses the optimized two-tier `bottom_progress_nav` from
+`projects/phd_confirmation/presentation_nav.py`:
+
+- Row 1: whole-talk progress across `S0`-`S5`
+- Row 2: active subscenario progress
+- Scenario timing constants should be calibrated against rendered video duration
+  after major edits
+
+Current high-quality render and merge workflow:
+
+```powershell
+cd projects/phd_confirmation
+$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
+$env:IMAGEIO_FFMPEG_EXE = "C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+$manim = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim"
+
+& $manim -qh scenario0_why_nonlinear.py WhyNonlinearWaves
+& $manim -qh scenario1_bound_harmonics.py BoundHarmonicsIntro
+& $manim -qh scenario2_exact_interactions.py WhyExactInteractionsAreExpensive
+& $manim -qh scenario3_vwa_structure.py TheVWAIdea
+& $manim -qh scenario4_higher_order_vwa.py HigherOrderVWA
+& $manim -qh scenario5_surface_kinematics.py SurfaceKinematicsVWA
+
+& $env:IMAGEIO_FFMPEG_EXE -y -f concat -safe 0 -i concat_high_quality.txt -c copy media/videos/phd_confirmation_full_1080p60.mp4
+```
+
+## Creamer Transform Project
 
 For `projects/creamer_transform/`, the current workflow is:
 

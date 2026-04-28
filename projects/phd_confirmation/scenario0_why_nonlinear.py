@@ -1,481 +1,306 @@
 """
-Scenario 0 — Why Do Nonlinear Waves Matter?  (v5)
-==================================================
-Changes from v4:
-  - Probe marker on spatial axes: vertical dashed line + label at x = X_FIXED,
-    shown from the moment the axes appear
-  - Spatial wave group animates in sync with the growing time series (both
-    driven by the same ValueTracker t_grow)
-  - Moving probe dots (blue = linear, yellow = nonlinear) ride the wave surface
-    at the measurement point, visually connecting spatial panel to time series
-  - Dynamic spatial header updates to show current time "t = X.X s"
-  - phase_note repositioned into the gap between upper panels and time series
-    to eliminate overlap with head_t
-  - 合 takeaway replaces the spectrum panel (FadeOut ax_k, Write takeaway in
-    that area) so it never overlaps the time series axes
+Scenario 0 - Why Do Nonlinear Waves Matter?
+===========================================
+
+A compact visual motivation for the rest of the PhD confirmation sequence:
+linear theory is the baseline, nonlinear bound structure changes wave shape,
+and small nonlinear phase-speed differences become observable timing offsets
+at a fixed wave gauge.
 """
 
 from manim import *
 import numpy as np
+from presentation_nav import bottom_progress_nav
 
 g = 9.81
 
-# ── Physical parameters ───────────────────────────────────────────────────────
-K0       = 1.5
-A        = 0.345         # tuned so crest enhancement is ~10%
-SIGMA_X  = 4.0
-OMEGA0   = np.sqrt(g * K0)          # ≈ 3.836 rad/s
-CG       = OMEGA0 / (2.0 * K0)     # ≈ 1.279 m/s
-EPS      = A * K0                   # ≈ 0.52
-PHASE_DRIFT_SCALE = 0.28            # keep timing drift visible but realistic
+K0 = 1.5
+A = 0.345
+SIGMA_X = 4.0
+OMEGA0 = np.sqrt(g * K0)
+CG = OMEGA0 / (2.0 * K0)
+EPS = A * K0
+PHASE_DRIFT_SCALE = 0.10
 OMEGA_NL = OMEGA0 * (1.0 + PHASE_DRIFT_SCALE * EPS**2 / 2.0)
 
-X_FIXED  = 11.0  # measurement / probe location [m]
-T_END    = 18.0  # time series length [s]
+X_PROBE = 11.0
+T_END = 18.0
 
-# Colours
-C_LIN = BLUE
-C_NL  = YELLOW
-C2P   = ORANGE
-C2M   = GREEN
-C3P   = PURPLE
-LOG_FLOOR = -2.0
-Y_SPEC    = 2.25
-GAMMA_JS  = 3.3
-
-def _tex_escape(text):
-    repl = {
-        "\\": r"\textbackslash{}",
-        "&": r"\&",
-        "%": r"\%",
-        "$": r"\$",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-    return "".join(repl.get(ch, ch) for ch in text)
+C_LINEAR = BLUE
+C_NL = YELLOW
+C_BOUND = ORANGE
+C_SETDOWN = GREEN
+C_THIRD = PURPLE
+C_PHASE = BLUE_B
+C_MUTED = GREY_B
+C_PANEL = GREY_D
+SCENARIO0_SECONDS = 52.20
+SCENARIO0_SUBSCENARIOS = [
+    "opening",
+    "linear baseline",
+    "shape + spectrum",
+    "fixed probe",
+    "arrival drift",
+    "bound harmonics",
+]
 
 
-def T(text, **kwargs):
-    weight = kwargs.pop("weight", NORMAL)
-    body = _tex_escape(text)
-    if weight == BOLD:
-        body = rf"\textbf{{{body}}}"
-    else:
-        body = rf"\text{{{body}}}"
-    return Tex(body, **kwargs)
+def env(x):
+    return np.exp(-x**2 / (2.0 * SIGMA_X**2))
 
-# ── Wave functions — Eulerian (lab) frame ─────────────────────────────────────
-def _env(xg):
-    return np.exp(-xg**2 / (2.0 * SIGMA_X**2))
 
 def eta_lin(x, t):
-    """Linear: envelope moves at c_g, carrier at ω₀."""
-    return A * _env(x - CG * t) * np.cos(K0 * x - OMEGA0 * t)
+    return A * env(x - CG * t) * np.cos(K0 * x - OMEGA0 * t)
+
 
 def eta_nl(x, t):
-    """Stokes: same envelope velocity, carrier phase at ω_NL = ω₀(1 + ε²/2)."""
-    xg  = x - CG * t
-    env = _env(xg)
-    ph  = K0 * x - OMEGA_NL * t
-    e1  = A            * env    * np.cos(ph)
-    e2p = (K0/2)*A**2  * env**2 * np.cos(2*ph)
-    e2m = -(K0/2)*A**2 * env**2
-    e3p = (3*K0**2/8)*A**3 * env**3 * np.cos(3*ph)
-    return e1 + e2p + e2m + e3p
-
-# ── Spectral helpers ──────────────────────────────────────────────────────────
-def _jonswap_raw(k, k_p):
-    if k <= 1e-6:
-        return 0.0
-    omega, omega_p = np.sqrt(g*k), np.sqrt(g*k_p)
-    sigma = 0.07 if omega <= omega_p else 0.09
-    base  = omega**(-5) * np.exp(-1.25*(omega_p/omega)**4)
-    peak  = GAMMA_JS**np.exp(-0.5*((omega-omega_p)/(sigma*omega_p))**2)
-    return float(base * peak * np.sqrt(g/k)/2.0)
-
-_JS1 = max(_jonswap_raw(k, K0)   for k in np.linspace(0.3*K0, 3.0*K0, 1000))
-_JS2 = max(_jonswap_raw(k, 2*K0) for k in np.linspace(0.6*K0, 6.0*K0, 1000))
-_JS3 = max(_jonswap_raw(k, 3*K0) for k in np.linspace(0.9*K0, 9.0*K0, 1000))
-
-def _ls(raw):
-    return max(np.log10(max(float(raw), 10**LOG_FLOOR)) - LOG_FLOOR, 0.0)
-
-def spec_lin(k):  return _ls(_jonswap_raw(k, K0)   / _JS1)
-def spec_2p(k):   return _ls(_jonswap_raw(k, 2*K0) / _JS2 * EPS)
-def spec_3p(k):   return _ls(_jonswap_raw(k, 3*K0) / _JS3 * EPS**2)
-def spec_sd(k):   return _ls(EPS * 0.8 * np.exp(-k**2 / (2.0*0.55**2)))
+    xg = x - CG * t
+    e = env(xg)
+    ph = K0 * x - OMEGA_NL * t
+    linear = A * e * np.cos(ph)
+    second_plus = (K0 / 2.0) * A**2 * e**2 * np.cos(2.0 * ph)
+    setdown = -(K0 / 2.0) * A**2 * e**2
+    third_plus = (3.0 * K0**2 / 8.0) * A**3 * e**3 * np.cos(3.0 * ph)
+    return linear + second_plus + setdown + third_plus
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+def gaussian(k, center, width, amp):
+    return amp * np.exp(-0.5 * ((k - center) / width) ** 2)
+
+
+def panel_box(mob, color=C_PANEL, opacity=0.08, buff=0.16):
+    return SurroundingRectangle(mob, color=color, buff=buff, corner_radius=0.08).set_fill(BLACK, opacity=opacity)
+
+
+def quiet_fade(mob, shift=DOWN * 0.03):
+    return FadeIn(mob, shift=shift)
+
+
 class WhyNonlinearWaves(Scene):
     def construct(self):
+        title = Text("Why nonlinear waves matter", font_size=36, weight=BOLD)
+        subtitle = Text("shape changes first; timing errors accumulate later", font_size=23, color=C_MUTED)
+        VGroup(title, subtitle).arrange(DOWN, buff=0.10).to_edge(UP, buff=0.18)
+        nav_progress = ValueTracker(0)
+        nav_progress.add_updater(
+            lambda tracker, dt: tracker.increment_value(len(SCENARIO0_SUBSCENARIOS) * dt / SCENARIO0_SECONDS)
+        )
+        nav = bottom_progress_nav(
+            0,
+            6,
+            "nonlinear waves",
+            SCENARIO0_SUBSCENARIOS,
+            nav_progress,
+            accent=C_NL,
+        )
+        self.add(nav_progress, nav)
+        self.play(quiet_fade(title), quiet_fade(subtitle), run_time=0.7)
 
-        # ── Title ──────────────────────────────────────────────────────────────
-        title = T("Why Do Nonlinear Waves Matter?", font_size=34, weight=BOLD)
-        title.to_edge(UP, buff=0.18)
-        self.play(Write(title))
-
-        # ══ Spatial axes (upper-left) ═════════════════════════════════════════
         ax_s = Axes(
             x_range=[-14, 14, 7],
-            y_range=[-0.45, 0.45, 0.20],
-            x_length=6.8,
-            y_length=2.4,
+            y_range=[-0.46, 0.46, 0.20],
+            x_length=7.0,
+            y_length=2.65,
             axis_config={"include_tip": False},
-            x_axis_config={
-                "numbers_to_include": [-10, 0, 10],
-                "font_size": 26,
-            },
-            y_axis_config={
-                "numbers_to_include": [-0.20, 0.0, 0.20],
-                "font_size": 24,
-            },
-        ).to_edge(LEFT, buff=0.5).shift(UP * 1.05)
-
-        head_s = T("Spatial snapshot  (t = 0 s)", font_size=20, color=GREY_B)\
-            .next_to(ax_s, UP, buff=0.22)
-        lab_xs = ax_s.get_x_axis_label(MathTex("x\\ (\\mathrm{m})", font_size=26))
-        lab_ys = ax_s.get_y_axis_label(MathTex("\\eta\\ (\\mathrm{m})", font_size=26))
-
-        # ── Probe marker — shown from the moment axes appear ──────────────────
-        # Vertical dashed line spans the full y range of ax_s at x = X_FIXED
-        probe_vline = DashedLine(
-            ax_s.c2p(X_FIXED, -0.44), ax_s.c2p(X_FIXED, 0.44),
-            stroke_width=1.5, color=GREY_C, dash_length=0.08,
-        )
-        # Label sits below the bottom tick of the probe line
-        probe_lbl_s = VGroup(
-            T("probe", font_size=15, color=GREY_C),
-            MathTex(rf"x={X_FIXED:.0f}\,\mathrm{{m}}", font_size=15, color=GREY_C),
-        ).arrange(DOWN, buff=0.04)\
-         .next_to(ax_s.c2p(X_FIXED, -0.44), DOWN, buff=0.10)
-
-        # ══ Spectrum axes (upper-right) ═══════════════════════════════════════
+            x_axis_config={"numbers_to_include": [-10, 0, 10], "font_size": 24},
+            y_axis_config={"numbers_to_include": [-0.2, 0.0, 0.2], "font_size": 22},
+        ).to_edge(LEFT, buff=0.54).shift(UP * 0.76)
         ax_k = Axes(
-            x_range=[0.0, 5.5, K0],
-            y_range=[0.0, Y_SPEC, 1.0],
-            x_length=4.2,
-            y_length=2.4,
+            x_range=[0.0, 5.6, 1.5],
+            y_range=[0.0, 1.15, 0.5],
+            x_length=4.35,
+            y_length=2.65,
             axis_config={"include_tip": False},
             x_axis_config={"include_numbers": False},
             y_axis_config={"include_numbers": False},
-        ).to_edge(RIGHT, buff=0.5).shift(UP * 1.05)
+        ).to_edge(RIGHT, buff=0.50).shift(UP * 0.76)
 
-        head_k = T("Wavenumber spectrum  (log)", font_size=20, color=GREY_B)\
-            .next_to(ax_k, UP, buff=0.22)
-        lab_xk = ax_k.get_x_axis_label(MathTex("k", font_size=26))
-        lab_yk = ax_k.get_y_axis_label(MathTex("\\log|\\hat{\\eta}|", font_size=26))
-
-        lbl_k0  = MathTex("k_0",  font_size=26, color=C_LIN)\
-            .next_to(ax_k.c2p(K0,   0), DOWN, buff=0.12)
-        lbl_2k0 = MathTex("2k_0", font_size=26, color=C2P)\
-            .next_to(ax_k.c2p(2*K0, 0), DOWN, buff=0.12)
-        lbl_3k0 = MathTex("3k_0", font_size=26, color=C3P)\
-            .next_to(ax_k.c2p(3*K0, 0), DOWN, buff=0.12)
-        lbl_sd  = MathTex("k{\\approx}0", font_size=22, color=C2M)\
-            .next_to(ax_k.c2p(0.2, 0), DOWN + RIGHT*0.3, buff=0.12)
+        head_s = Text("spatial wave group", font_size=24, color=C_MUTED).next_to(ax_s, UP, buff=0.18)
+        head_k = Text("wavenumber spectrum", font_size=24, color=C_MUTED).next_to(ax_k, UP, buff=0.18)
+        lab_xs = ax_s.get_x_axis_label(MathTex("x", font_size=25))
+        lab_ys = ax_s.get_y_axis_label(MathTex(r"\eta", font_size=25))
+        lab_xk = ax_k.get_x_axis_label(MathTex("k", font_size=25))
+        lab_yk = ax_k.get_y_axis_label(MathTex(r"|\hat\eta|", font_size=25))
 
         self.play(
             LaggedStart(
-                AnimationGroup(Create(ax_s), Write(lab_xs), Write(lab_ys), Write(head_s)),
-                AnimationGroup(Create(ax_k), Write(lab_xk), Write(lab_yk), Write(head_k)),
-                lag_ratio=0.3,
+                AnimationGroup(Create(ax_s), quiet_fade(head_s), quiet_fade(lab_xs), quiet_fade(lab_ys)),
+                AnimationGroup(Create(ax_k), quiet_fade(head_k), quiet_fade(lab_xk), quiet_fade(lab_yk)),
+                lag_ratio=0.24,
             )
         )
-        # Probe appears with the axes — establishes where the gauge is before
-        # any wave is drawn
-        self.play(Create(probe_vline), Write(probe_lbl_s))
-        self.wait(0.8)
 
-        # ══ ① Linear wave (t = 0) ═════════════════════════════════════════════
-        lin0 = ax_s.plot(lambda x: eta_lin(x, 0),
-                         x_range=[-14, 14, 0.05], color=C_LIN, stroke_width=2.5)
-        env_u = ax_s.plot(lambda x:  A*_env(x), x_range=[-14, 14, 0.15],
-                          color=BLUE_A, stroke_width=1.0, stroke_opacity=0.5)
-        env_l = ax_s.plot(lambda x: -A*_env(x), x_range=[-14, 14, 0.15],
-                          color=BLUE_A, stroke_width=1.0, stroke_opacity=0.5)
-        spec_lin_c = ax_k.plot(spec_lin, x_range=[0.05, 5.5, 0.02],
-                               color=C_LIN, stroke_width=2.5)
+        lin_wave = ax_s.plot(lambda x: eta_lin(x, 0), x_range=[-14, 14, 0.04], color=C_LINEAR, stroke_width=2.7)
+        env_u = ax_s.plot(lambda x: A * env(x), x_range=[-14, 14, 0.10], color=BLUE_A, stroke_width=1.1, stroke_opacity=0.45)
+        env_l = ax_s.plot(lambda x: -A * env(x), x_range=[-14, 14, 0.10], color=BLUE_A, stroke_width=1.1, stroke_opacity=0.45)
+        lin_spec = ax_k.plot(lambda k: gaussian(k, K0, 0.32, 1.0), x_range=[0.05, 5.6, 0.02], color=C_LINEAR, stroke_width=2.6)
+        k0_label = MathTex("k_0", font_size=25, color=C_LINEAR).next_to(ax_k.c2p(K0, 0), DOWN, buff=0.10)
 
-        lin_eq = MathTex(r"\eta_{\rm lin} = A(x)\cos(k_0 x - \omega_0 t)",
-                         font_size=28, color=C_LIN).move_to([0, -0.96, 0])
+        baseline = VGroup(
+            Text("linear theory", font_size=25, color=C_LINEAR),
+            MathTex(r"\eta_{\rm lin}=A(x)\cos(k_0x-\omega_0t)", font_size=30, color=C_LINEAR),
+        ).arrange(DOWN, buff=0.10).to_edge(DOWN, buff=1.02)
+        self.play(Create(lin_wave), Create(env_u), Create(env_l))
+        self.play(Create(lin_spec), quiet_fade(k0_label), quiet_fade(baseline))
+        self.wait(1.8)
 
-        self.play(Create(lin0), Create(env_u), Create(env_l))
-        self.play(Create(spec_lin_c), Write(lbl_k0))
-        self.play(Write(lin_eq))
-        self.wait(2.6)
+        nl_wave = ax_s.plot(lambda x: eta_nl(x, 0), x_range=[-14, 14, 0.04], color=C_NL, stroke_width=2.9)
+        nl_note = VGroup(
+            Text("same wave group, different shape", font_size=25, color=C_NL),
+            Text("sharper crests and flatter troughs", font_size=21, color=C_MUTED),
+        ).arrange(DOWN, buff=0.08).move_to(baseline)
+        self.play(FadeOut(baseline, run_time=0.3), quiet_fade(nl_note, shift=UP * 0.03), Create(nl_wave))
 
-        # ══ ② Overlay Stokes wave (t = 0) ════════════════════════════════════
-        nl0 = ax_s.plot(lambda x: eta_nl(x, 0),
-                        x_range=[-10, 10, 0.05], color=C_NL, stroke_width=2.5)
+        xs = np.linspace(-3.0, 3.0, 900)
+        x_lin = xs[np.argmax([eta_lin(x, 0) for x in xs])]
+        x_non = xs[np.argmax([eta_nl(x, 0) for x in xs])]
+        h_lin = eta_lin(x_lin, 0)
+        h_non = eta_nl(x_non, 0)
+        crest_ref = DashedLine(ax_s.c2p(-3.8, h_lin), ax_s.c2p(3.8, h_lin), color=C_LINEAR, stroke_width=1.4, dash_length=0.10)
+        crest_arrow = DoubleArrow(ax_s.c2p(x_non, h_lin), ax_s.c2p(x_non, h_non), buff=0, color=C_NL, stroke_width=2.3, tip_length=0.12)
+        crest_label = Text("about 10% crest lift", font_size=21, color=C_NL).next_to(crest_arrow, RIGHT, buff=0.12)
+        self.play(Create(crest_ref), GrowArrow(crest_arrow), quiet_fade(crest_label, shift=RIGHT * 0.03))
+        self.wait(1.8)
 
-        nl_eq = MathTex(
-            r"\eta_{\rm nl}=\eta_{\rm lin}+\mathrm{small\ nonlinear\ correction}",
-            font_size=28, color=C_NL,
-        ).move_to([0, -1.46, 0])
-
-        self.play(Create(nl0))
-        self.play(Write(nl_eq))
-        self.wait(2.2)
-
-        # ══ ③ Crest-height annotation ═════════════════════════════════════════
-        xs   = np.linspace(-2.5, 2.5, 600)
-        x_cl = xs[np.argmax([eta_lin(x, 0) for x in xs])]
-        x_cn = xs[np.argmax([eta_nl(x, 0)  for x in xs])]
-        h_lin = eta_lin(x_cl, 0)
-        h_nl  = eta_nl(x_cn, 0)
-
-        ref_line = DashedLine(
-            ax_s.c2p(-4.0, h_lin), ax_s.c2p(4.0, h_lin),
-            stroke_width=1.2, color=C_LIN, dash_length=0.10,
+        spec_2 = ax_k.plot(lambda k: gaussian(k, 2 * K0, 0.42, 0.42), x_range=[0.05, 5.6, 0.02], color=C_BOUND, stroke_width=2.4)
+        spec_3 = ax_k.plot(lambda k: gaussian(k, 3 * K0, 0.48, 0.20), x_range=[0.05, 5.6, 0.02], color=C_THIRD, stroke_width=2.4)
+        spec_0 = ax_k.plot(lambda k: gaussian(k, 0.25, 0.36, 0.36), x_range=[0.01, 2.0, 0.02], color=C_SETDOWN, stroke_width=2.4)
+        labels = VGroup(
+            MathTex("2k_0", font_size=23, color=C_BOUND).next_to(ax_k.c2p(2 * K0, 0), DOWN, buff=0.10),
+            MathTex("3k_0", font_size=23, color=C_THIRD).next_to(ax_k.c2p(3 * K0, 0), DOWN, buff=0.10),
+            MathTex(r"k\approx0", font_size=21, color=C_SETDOWN).next_to(ax_k.c2p(0.25, 0), DOWN + RIGHT * 0.25, buff=0.10),
         )
-        arr = DoubleArrow(
-            ax_s.c2p(x_cn, h_lin), ax_s.c2p(x_cn, h_nl),
-            buff=0, stroke_width=2.0, color=C_NL, tip_length=0.12,
-        )
-        pct = (h_nl - h_lin) / h_lin * 100
-        pct_lbl = T(f"+{pct:.0f}%", font_size=28, color=C_NL)\
-            .next_to(arr, RIGHT, buff=0.08)
+        fingerprint = VGroup(
+            Text("extra spectral energy", font_size=19, color=WHITE),
+            MathTex(r"k\approx0,\quad 2k_0,\quad 3k_0", font_size=26, color=C_NL),
+        ).arrange(DOWN, buff=0.08).next_to(ax_k, DOWN, buff=0.34)
+        fingerprint.scale_to_fit_width(4.25)
+        self.play(LaggedStart(Create(spec_0), Create(spec_2), Create(spec_3), lag_ratio=0.30), quiet_fade(labels))
+        self.play(quiet_fade(fingerprint))
+        self.wait(2.0)
 
-        self.play(Create(ref_line))
-        self.play(GrowArrow(arr), Write(pct_lbl))
-        self.wait(3.2)
+        self.play(FadeOut(nl_note), FadeOut(crest_ref), FadeOut(crest_arrow), FadeOut(crest_label), FadeOut(fingerprint), FadeOut(env_u), FadeOut(env_l))
 
-        # ══ ④ Spectral fingerprint ════════════════════════════════════════════
-        spec_2p_c = ax_k.plot(spec_2p, x_range=[0.05, 5.5, 0.02],
-                               color=C2P, stroke_width=2.1, stroke_opacity=0.82)
-        spec_3p_c = ax_k.plot(spec_3p, x_range=[0.05, 5.5, 0.02],
-                               color=C3P, stroke_width=2.1, stroke_opacity=0.82)
-        spec_sd_c = ax_k.plot(spec_sd, x_range=[0.01, 3.0,  0.02],
-                               color=C2M, stroke_width=2.1, stroke_opacity=0.82)
-        spectral_hint = VGroup(
-            T("extra nonlinear", font_size=17, color=GREY_A),
-            T("spectral energy", font_size=17, color=GREY_A),
-        ).arrange(DOWN, buff=0.05, aligned_edge=LEFT)
-        spectral_hint.move_to(ax_k.c2p(3.85, 1.65))
-        self.play(
-            LaggedStart(
-                Create(spec_2p_c),
-                Create(spec_sd_c),
-                Create(spec_3p_c),
-                lag_ratio=0.4,
-            )
-        )
-        self.play(Write(spectral_hint))
-        self.wait(2.2)
+        probe = DashedLine(ax_s.c2p(X_PROBE, -0.44), ax_s.c2p(X_PROBE, 0.44), color=GREY_C, stroke_width=1.5, dash_length=0.08)
+        probe_label = VGroup(
+            Text("fixed gauge", font_size=18, color=GREY_C),
+            MathTex(r"x=11\,{\rm m}", font_size=18, color=GREY_C),
+        ).arrange(DOWN, buff=0.04).next_to(ax_s.c2p(X_PROBE, -0.44), DOWN, buff=0.08)
+        self.play(Create(probe), quiet_fade(probe_label))
 
-        # ══ ⑤ Animated wave + growing time series ════════════════════════════
-        # Clear the annotation / equation overlays and the envelope guides
-        self.play(
-            FadeOut(lin_eq), FadeOut(nl_eq),
-            FadeOut(ref_line), FadeOut(arr), FadeOut(pct_lbl),
-            FadeOut(env_u), FadeOut(env_l),
-        )
-
-        # ── Time series axes (bottom panel) ───────────────────────────────────
-        # Slightly left of centre — leaves right margin clear for annotations
         ax_t = Axes(
             x_range=[0, T_END, 3],
-            y_range=[-0.40, 0.40, 0.20],
-            x_length=10.3,
-            y_length=1.9,
+            y_range=[-0.42, 0.42, 0.2],
+            x_length=10.5,
+            y_length=1.75,
             axis_config={"include_tip": False},
-            x_axis_config={
-                "numbers_to_include": [3, 6, 9, 12, 15, 18],
-                "font_size": 26,
-            },
-            y_axis_config={
-                "numbers_to_include": [-0.20, 0.0, 0.20],
-                "font_size": 24,
-            },
-        ).move_to([-0.15, -2.42, 0])
+            x_axis_config={"numbers_to_include": [3, 6, 9, 12, 15, 18], "font_size": 23},
+            y_axis_config={"numbers_to_include": [-0.2, 0.0, 0.2], "font_size": 21},
+        ).to_edge(DOWN, buff=0.98)
+        head_t = Text("what the fixed gauge records", font_size=23, color=C_MUTED).next_to(ax_t, UP, buff=0.13)
+        lab_xt = ax_t.get_x_axis_label(MathTex("t", font_size=25))
+        lab_yt = ax_t.get_y_axis_label(MathTex(r"\eta", font_size=25))
+        self.play(Create(ax_t), quiet_fade(head_t), quiet_fade(lab_xt), quiet_fade(lab_yt))
 
-        head_t = T(f"Wave gauge record  at  x = {X_FIXED:.0f} m",
-                      font_size=20, color=GREY_B).next_to(ax_t, UP, buff=0.14)
-        lab_xt = ax_t.get_x_axis_label(MathTex("t\\ (\\mathrm{s})", font_size=26))
-        lab_yt = ax_t.get_y_axis_label(MathTex("\\eta", font_size=26))
-
-        self.play(Create(ax_t), Write(head_t), Write(lab_xt), Write(lab_yt))
-        self.wait(1.0)
-
-        # ── Single ValueTracker drives BOTH spatial animation and time series ─
-        t_grow = ValueTracker(0.001)
-
-        # Spatial: wave group moves to the right
-        lin_live = always_redraw(lambda: ax_s.plot(
-            lambda x: eta_lin(x, t_grow.get_value()),
-            x_range=[-14, 14, 0.05], color=C_LIN, stroke_width=2.5,
-        ))
-        nl_live = always_redraw(lambda: ax_s.plot(
-            lambda x: eta_nl(x, t_grow.get_value()),
-            x_range=[-14, 14, 0.05], color=C_NL, stroke_width=2.5,
-        ))
-        # Header shows current time
-        head_s_live = always_redraw(lambda:
-            T(
-                f"Spatial snapshot  (t = {t_grow.get_value():.1f} s)",
-                font_size=20, color=GREY_B,
-            ).next_to(ax_s, UP, buff=0.22)
-        )
-
-        # Probe dots: coloured circles that ride the wave surface at x = X_FIXED.
-        # Their vertical position traces exactly what the time series records.
-        probe_dot_lin = always_redraw(lambda: Dot(
-            ax_s.c2p(X_FIXED, eta_lin(X_FIXED, t_grow.get_value())),
-            radius=0.09, color=C_LIN,
-        ).set_stroke(WHITE, width=1.5))
-        probe_dot_nl = always_redraw(lambda: Dot(
-            ax_s.c2p(X_FIXED, eta_nl(X_FIXED, t_grow.get_value())),
-            radius=0.09, color=C_NL,
-        ).set_stroke(WHITE, width=1.5))
-
-        # Time series: grow from left as t_grow advances
-        live_ts_lin = always_redraw(lambda: ax_t.plot(
-            lambda t: eta_lin(X_FIXED, t),
-            x_range=[0, t_grow.get_value(), 0.04],
-            color=C_LIN, stroke_width=2.2,
-        ))
-        live_ts_nl = always_redraw(lambda: ax_t.plot(
-            lambda t: eta_nl(X_FIXED, t),
-            x_range=[0, t_grow.get_value(), 0.04],
-            color=C_NL, stroke_width=2.2,
-        ))
-
-        # Swap static spatial plots → animated; start both panels together
-        self.play(FadeOut(lin0), FadeOut(nl0), FadeOut(head_s))
-        self.add(
-            lin_live, nl_live, head_s_live,
-            probe_dot_lin, probe_dot_nl,
-            live_ts_lin, live_ts_nl,
-        )
-        self.play(t_grow.animate.set_value(T_END), run_time=11, rate_func=linear)
+        t = ValueTracker(0.001)
+        live_lin = always_redraw(lambda: ax_s.plot(lambda x: eta_lin(x, t.get_value()), x_range=[-14, 14, 0.05], color=C_LINEAR, stroke_width=2.5))
+        live_nl = always_redraw(lambda: ax_s.plot(lambda x: eta_nl(x, t.get_value()), x_range=[-14, 14, 0.05], color=C_NL, stroke_width=2.7))
+        gauge_lin = always_redraw(lambda: Dot(ax_s.c2p(X_PROBE, eta_lin(X_PROBE, t.get_value())), radius=0.075, color=C_LINEAR).set_stroke(WHITE, width=1.2))
+        gauge_nl = always_redraw(lambda: Dot(ax_s.c2p(X_PROBE, eta_nl(X_PROBE, t.get_value())), radius=0.075, color=C_NL).set_stroke(WHITE, width=1.2))
+        trace_lin = always_redraw(lambda: ax_t.plot(lambda tau: eta_lin(X_PROBE, tau), x_range=[0, max(0.02, t.get_value()), 0.04], color=C_LINEAR, stroke_width=2.2))
+        trace_nl = always_redraw(lambda: ax_t.plot(lambda tau: eta_nl(X_PROBE, tau), x_range=[0, max(0.02, t.get_value()), 0.04], color=C_NL, stroke_width=2.2))
+        self.play(FadeOut(lin_wave), FadeOut(nl_wave))
+        self.add(live_lin, live_nl, gauge_lin, gauge_nl, trace_lin, trace_nl)
+        self.play(t.animate.set_value(T_END), run_time=14.0, rate_func=linear)
         self.wait(1.4)
 
-        # ── Annotate phase offset in the time series ──────────────────────────
-        # NL carrier is faster → its crests arrive a little earlier
-        t_group = X_FIXED / CG   # group centre passes the probe here
-        t_region = np.linspace(t_group + 0.5, t_group + 2.5, 500)
-        t_lin_crest = t_region[np.argmax([eta_lin(X_FIXED, t) for t in t_region])]
-        t_nl_crest  = t_region[np.argmax([eta_nl(X_FIXED,  t) for t in t_region])]
-        dt = t_lin_crest - t_nl_crest   # > 0: NL crest arrives earlier
-
-        vl_lin = DashedLine(
-            ax_t.c2p(t_lin_crest, -0.38), ax_t.c2p(t_lin_crest, 0.38),
-            stroke_width=1.5, color=C_LIN, dash_length=0.10,
+        t_group = X_PROBE / CG
+        window = np.linspace(t_group + 0.5, t_group + 2.5, 800)
+        t_lin = window[np.argmax([eta_lin(X_PROBE, tau) for tau in window])]
+        t_non = window[np.argmax([eta_nl(X_PROBE, tau) for tau in window])]
+        delta_ms = abs(t_lin - t_non) * 1000.0
+        v_lin = DashedLine(ax_t.c2p(t_lin, -0.38), ax_t.c2p(t_lin, 0.38), color=C_LINEAR, stroke_width=1.4, dash_length=0.09)
+        v_non = DashedLine(ax_t.c2p(t_non, -0.38), ax_t.c2p(t_non, 0.38), color=C_NL, stroke_width=1.4, dash_length=0.09)
+        dt_arrow = DoubleArrow(ax_t.c2p(t_non, 0.32), ax_t.c2p(t_lin, 0.32), buff=0, color=WHITE, stroke_width=2.0, tip_length=0.10)
+        dt_label = MathTex(rf"\Delta t\approx {delta_ms:.0f}\,{{\rm ms}}", font_size=24, color=WHITE).next_to(dt_arrow, UP, buff=0.06)
+        timing_text = VGroup(
+            Text("small speed change", font_size=17, color=C_NL),
+            Text("visible arrival drift", font_size=17, color=C_MUTED),
+        ).arrange(DOWN, buff=0.05, aligned_edge=LEFT)
+        timing_text.move_to(ax_t.c2p(2.7, 0.29))
+        timing = VGroup(
+            panel_box(timing_text, color=C_NL, opacity=0.16, buff=0.12),
+            timing_text,
         )
-        vl_nl = DashedLine(
-            ax_t.c2p(t_nl_crest, -0.38), ax_t.c2p(t_nl_crest, 0.38),
-            stroke_width=1.5, color=C_NL, dash_length=0.10,
-        )
-        dt_arrow = DoubleArrow(
-            ax_t.c2p(t_nl_crest, 0.32), ax_t.c2p(t_lin_crest, 0.32),
-            buff=0, stroke_width=2.0, color=WHITE, tip_length=0.10,
-        )
-        dt_lbl = MathTex(
-            rf"\Delta t \approx {abs(dt)*1000:.0f}\ \mathrm{{ms}}",
-            font_size=24, color=WHITE,
-        ).next_to(dt_arrow, UP, buff=0.08)
+        self.play(Create(v_non), Create(v_lin), GrowArrow(dt_arrow), quiet_fade(dt_label, shift=UP * 0.03))
+        self.play(quiet_fade(timing))
+        self.wait(2.6)
 
-        self.play(Create(vl_lin), Create(vl_nl))
-        self.play(GrowArrow(dt_arrow), Write(dt_lbl))
-        self.wait(3.2)
-
-        # Phase-drift formula — placed in the gap between upper and lower panels
-        # (below ax_s bottom ≈ y −0.15, above head_t ≈ y −1.49)
-        phase_note = MathTex(
-            r"\text{Small nonlinear phase-speed increase}"
-            r"\quad\Rightarrow\quad"
-            r"\text{arrival-time drift builds up gradually}",
-            font_size=24, color=YELLOW,
-        ).move_to([-1.5, -0.82, 0])   # left-of-centre, clear of spectrum labels
-        self.play(Write(phase_note))
-        self.wait(2.8)
-
-        # ══ ⑥ 合 — Takeaway (replaces spectrum panel) ════════════════════════
-        self.play(FadeOut(phase_note))
-
-        # Collect and fade out all spectrum-panel elements
-        spec_group = VGroup(
-            ax_k, head_k, lab_xk, lab_yk,
-            spec_lin_c, spec_2p_c, spec_3p_c, spec_sd_c,
-            lbl_k0, lbl_2k0, lbl_3k0, lbl_sd,
-            spectral_hint,
+        self.play(
+            *[FadeOut(mob) for mob in [
+                ax_k, head_k, lab_xk, lab_yk, lin_spec, spec_0, spec_2, spec_3, k0_label, labels,
+                probe, probe_label, timing,
+            ]]
         )
 
-        self.play(FadeOut(spec_group), FadeOut(probe_vline), FadeOut(probe_lbl_s))
+        final_lin = ax_s.plot(lambda x: eta_lin(x, 0), x_range=[-14, 14, 0.04], color=C_LINEAR, stroke_width=2.5)
+        final_nl = ax_s.plot(lambda x: eta_nl(x, 0), x_range=[-14, 14, 0.04], color=C_NL, stroke_width=2.8)
+        final_trace_lin = ax_t.plot(lambda tau: eta_lin(X_PROBE, tau), x_range=[0, T_END, 0.04], color=C_LINEAR, stroke_width=2.2)
+        final_trace_nl = ax_t.plot(lambda tau: eta_nl(X_PROBE, tau), x_range=[0, T_END, 0.04], color=C_NL, stroke_width=2.2)
+        self.remove(live_lin, live_nl, gauge_lin, gauge_nl, trace_lin, trace_nl)
+        self.add(final_lin, final_nl, final_trace_lin, final_trace_nl, v_non, v_lin, dt_arrow, dt_label)
 
-        # Return to a clean t = 0 comparison in the spatial panel before the bridge.
-        ts_final_lin = ax_t.plot(
-            lambda t: eta_lin(X_FIXED, t),
-            x_range=[0, T_END, 0.04], color=C_LIN, stroke_width=2.2,
+        takeaway = VGroup(
+            Text("Why it matters", font_size=25, weight=BOLD, color=WHITE),
+            VGroup(
+                Text("shape:", font_size=20, color=C_NL),
+                Text("crests sharpen, troughs flatten", font_size=20, color=WHITE),
+            ).arrange(RIGHT, buff=0.14),
+            VGroup(
+                Text("timing:", font_size=20, color=C_NL),
+                Text("crests arrive earlier at a fixed gauge", font_size=20, color=WHITE),
+            ).arrange(RIGHT, buff=0.14),
+        ).arrange(DOWN, buff=0.15, aligned_edge=LEFT)
+        takeaway.scale_to_fit_width(4.45)
+        takeaway.move_to([3.45, 0.76, 0])
+        box = panel_box(takeaway, color=C_NL, opacity=0.10, buff=0.22)
+        spatial_highlight = SurroundingRectangle(ax_s, color=C_NL, buff=0.10, corner_radius=0.07)
+        time_highlight = SurroundingRectangle(ax_t, color=C_NL, buff=0.10, corner_radius=0.07)
+        self.play(FadeIn(box), quiet_fade(takeaway[0]))
+        self.play(quiet_fade(takeaway[1]), Create(spatial_highlight))
+        self.play(quiet_fade(takeaway[2]), ReplacementTransform(spatial_highlight, time_highlight))
+        self.wait(2.4)
+
+        transition_question = Text(
+            "What did nonlinearity add?",
+            font_size=34,
+            weight=BOLD,
+            color=WHITE,
         )
-        ts_final_nl = ax_t.plot(
-            lambda t: eta_nl(X_FIXED, t),
-            x_range=[0, T_END, 0.04], color=C_NL, stroke_width=2.2,
+        transition_extra = VGroup(
+            Text("Extra wave components", font_size=28, color=C_MUTED),
+            Text("that travel with the group.", font_size=28, color=C_MUTED),
+        ).arrange(DOWN, buff=0.10)
+        transition_focus = Text(
+            "These are bound harmonics.",
+            font_size=30,
+            weight=BOLD,
+            color=C_BOUND,
         )
-        self.remove(
-            lin_live, nl_live, head_s_live,
-            probe_dot_lin, probe_dot_nl,
-            live_ts_lin, live_ts_nl,
+        transition = VGroup(transition_question, transition_extra, transition_focus).arrange(DOWN, buff=0.34)
+        transition.scale_to_fit_width(9.4)
+        transition.move_to(ORIGIN)
+
+        self.play(
+            FadeOut(VGroup(
+                title, subtitle, ax_s, head_s, lab_xs, lab_ys, final_lin, final_nl,
+                ax_t, head_t, lab_xt, lab_yt, final_trace_lin, final_trace_nl,
+                v_non, v_lin, dt_arrow, dt_label, box, takeaway, time_highlight,
+            )),
+            run_time=0.8,
         )
-        self.add(ts_final_lin, ts_final_nl)
-        lin_reset = ax_s.plot(lambda x: eta_lin(x, 0),
-                              x_range=[-14, 14, 0.05], color=C_LIN, stroke_width=2.5)
-        nl_reset = ax_s.plot(lambda x: eta_nl(x, 0),
-                             x_range=[-14, 14, 0.05], color=C_NL, stroke_width=2.5)
-        head_s_reset = T("Spatial snapshot  (t = 0 s)", font_size=20, color=GREY_B)\
-            .next_to(ax_s, UP, buff=0.22)
-        curve_labels = VGroup(
-            T("linear", font_size=18, color=C_LIN),
-            T("nonlinear", font_size=18, color=C_NL),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.10).move_to(ax_s.c2p(-10.5, 0.34))
-        self.play(Create(lin_reset), Create(nl_reset), FadeIn(head_s_reset), Write(curve_labels))
-
-        shape_takeaway = VGroup(
-            T("Nonlinear shape at t = 0", font_size=20, color=YELLOW, weight=BOLD),
-            T("Sharper crests and flatter troughs than linear theory predicts",
-                 font_size=16, color=GREY_A),
-        ).arrange(DOWN, buff=0.16, aligned_edge=LEFT)
-
-        timing_takeaway = VGroup(
-            T("Nonlinear propagation at a fixed gauge", font_size=20, color=YELLOW, weight=BOLD),
-            T("Crests reach the probe earlier than linear theory predicts",
-                 font_size=16, color=GREY_A),
-            T("That timing mismatch accumulates as the wave group passes",
-                 font_size=16, color=GREY_A),
-        ).arrange(DOWN, buff=0.16, aligned_edge=LEFT)
-
-        bridge = T(
-            "What are these extra components?  ->  Bound harmonics",
-            font_size=15, color=GREY_B,
-        )
-
-        takeaway_content = VGroup(
-            shape_takeaway,
-            timing_takeaway,
-            bridge,
-        ).arrange(DOWN, buff=0.34, aligned_edge=LEFT).move_to(ax_k.get_center())
-
-        takeaway_panel = SurroundingRectangle(
-            takeaway_content,
-            buff=0.22,
-            corner_radius=0.12,
-            stroke_color=GREY_D,
-            stroke_width=1.2,
-            fill_color=BLACK,
-            fill_opacity=0.22,
-        )
-
-        spatial_box = SurroundingRectangle(ax_s, color=YELLOW, buff=0.12, corner_radius=0.06)
-        time_box = SurroundingRectangle(ax_t, color=YELLOW, buff=0.12, corner_radius=0.06)
-
-        self.play(FadeIn(takeaway_panel), Write(shape_takeaway), Create(spatial_box))
-        self.wait(1.8)
-        self.play(Write(timing_takeaway), ReplacementTransform(spatial_box, time_box))
-        self.wait(1.8)
-        self.play(Write(bridge))
-        self.wait(4.8)
+        self.play(quiet_fade(transition_question), run_time=0.6)
+        self.play(quiet_fade(transition_extra), run_time=0.6)
+        self.play(quiet_fade(transition_focus), run_time=0.6)
+        self.wait(5.0)
+        nav_progress.clear_updaters()

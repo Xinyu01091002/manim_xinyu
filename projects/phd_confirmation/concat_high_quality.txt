@@ -1,0 +1,6 @@
+file 'media/videos/scenario0_why_nonlinear/1080p60/WhyNonlinearWaves.mp4'
+file 'media/videos/scenario1_bound_harmonics/1080p60/BoundHarmonicsIntro.mp4'
+file 'media/videos/scenario2_exact_interactions/1080p60/WhyExactInteractionsAreExpensive.mp4'
+file 'media/videos/scenario3_vwa_structure/1080p60/TheVWAIdea.mp4'
+file 'media/videos/scenario4_higher_order_vwa/1080p60/HigherOrderVWA.mp4'
+file 'media/videos/scenario5_surface_kinematics/1080p60/SurfaceKinematicsVWA.mp4'

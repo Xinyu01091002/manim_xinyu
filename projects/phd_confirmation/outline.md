@@ -1,5 +1,28 @@
 # PhD Confirmation - Manim Animation Outline
 
+## Current Render Status
+
+The current S0-S5 sequence has been rendered and merged as:
+
+- Combined video: `media/videos/phd_confirmation_full_1080p60.mp4`
+- Quality: `1080p60`
+- Duration: `00:05:05.08`
+- Merge list: `concat_high_quality.txt`
+
+All scenarios use the two-tier `bottom_progress_nav` navigation bar:
+
+- top row: whole-talk progress across `S0`-`S5`
+- bottom row: active subscenario progress
+
+Current calibrated high-quality durations:
+
+- S0 `WhyNonlinearWaves`: `52.20`
+- S1 `BoundHarmonicsIntro`: `42.60`
+- S2 `WhyExactInteractionsAreExpensive`: `39.58`
+- S3 `TheVWAIdea`: `87.93`
+- S4 `HigherOrderVWA`: `53.67`
+- S5 `SurfaceKinematicsVWA`: `30.00`
+
 ## Scenario 0: Why Do Nonlinear Waves Matter?
 
 Goal: motivate why linear wave theory is not enough before introducing bound harmonics.
@@ -104,13 +127,14 @@ Goal: explain why component-resolved bound-wave theory becomes computationally e
 
 ---
 
-## Scenario 3: The VWA Idea (TBD)
+## Scenario 3: The VWA Idea
 
 Goal: introduce the exact second-order superharmonic formulation and the VWA formulation side by side, so the kernel reduction and cost reduction are visible in one step.
 
 ### Qi - Setup
 - Start from the exact second-order superharmonic expression:
   `eta_exact^(22) = sum_m sum_n a_m a_n G_{m+n}(k_m,k_n) cos(theta_m + theta_n)`.
+- Put the explicit summation limits on screen so the `N_c^2` structure is visible before introducing the approximation.
 - Remind the audience that the expensive part is the fully pair-dependent interaction kernel over all component pairs.
 
 ### Cheng - Build
@@ -128,20 +152,91 @@ Goal: introduce the exact second-order superharmonic formulation and the VWA for
   1. exact theory: component-resolved and expensive
   2. VWA: reduced kernel representation for the same second-order superharmonic problem
   3. the algebra separates, enabling `O(N log N)` evaluation
+- End with an explicit second-order comparison:
+  as the number of spectral components increases, the exact second-order formula must list all pair terms
+  directly as terms like `a_1 a_2 G_12 cos(theta_12)`, not through a shorthand variable.
+  Reveal the added pair terms when moving from 2 to 3, 4, and 5 components,
+  giving `N_c x N_c` explicit pair entries and `O(N_c^2)` work.
+  By contrast, the VWA second-order form remains one compact product of two spectral signals,
+  evaluated through the `O(N_c log N_c)` FFT route.
 - Keep the wording modest at this stage:
   introduce the reduced formulation first, then reserve the stronger claims about exact phase preservation and kernel-amplitude approximation for the following scene if needed.
 
----
-
-## Scenario 4: What Is Preserved, What Is Approximated? (TBD)
-
-Goal: explain that VWA preserves the exact superharmonic phase structure and approximates only the interaction-kernel amplitude.
+### Visual / implementation notes
+- Current low-quality preview command:
+  `manim -ql scenario3_vwa_structure.py TheVWAIdea`
 
 ---
 
-## Scenario 5: Higher-Order Extension and Validation Bridge (TBD)
+## Scenario 4: Extending VWA to Higher Order
 
-Goal: connect the compact VWA product form to second-, third-, fourth-, and fifth-order validation, then hand off to PPT result figures.
+Goal: show that the second-order VWA idea extends naturally to higher-order bound harmonics: keep the higher-order phase combinations, replace growing interaction kernels with reusable wavenumber weights, and evaluate compact products through FFT-built signals.
+
+### Qi - Setup
+- Begin from the Scenario 3 takeaway:
+  second-order VWA turns a pairwise kernel sum into a compact product of two FFT-built signals.
+- Use a transition such as:
+  `Second order is only the first test. Higher-order bound waves ask the same question again: can we keep the phase structure without listing every interaction?`
+
+### Cheng - Build
+- Show exact higher-order interaction growth:
+  pairs `(k_i,k_j)`,
+  triads `(k_i,k_j,k_l)`,
+  quartets `(k_i,k_j,k_l,k_p)`.
+- Emphasize the exact phase combinations:
+  `theta_i + theta_j`,
+  `theta_i + theta_j + theta_l`,
+  `theta_i + theta_j + theta_l + theta_p`.
+- Keep the visual language consistent with Scenario 3: exact theory expands into many explicit combinations; VWA remains a small number of weighted signals and products.
+
+### Zhuan - Core insight
+- Present the higher-order VWA idea as a pattern, not as a full derivation:
+  weighted linear signals are reused, then multiplied in physical space.
+- Show cost contrast:
+  exact order `p`: many `p`-tuples, approximately `O(N_c^p)`;
+  VWA route: a small number of FFT-built fields, `O(N_c log N_c)`.
+
+### He - Takeaway
+- VWA is not only a second-order shortcut.
+- It is a structure-preserving route for higher-order bound harmonics:
+  keep the sum phases / variable wavenumbers,
+  approximate kernel amplitudes using wavenumber weights,
+  evaluate through FFT-ready products.
+- Bridge to validation:
+  `If the structure is right, the next question is empirical: how well does this compact approximation reproduce higher-order bound waves?`
+
+### Visual / implementation notes
+- Current low-quality preview command:
+  `manim -ql scenario4_higher_order_vwa.py HigherOrderVWA`
+
+---
+
+## Scenario 5: Extensions of VWA
+
+Goal: avoid another derivation and use one looping four-column visual page to show completed extensions of the same VWA approximation: directional waves, surface kinematics, time-series reconstruction, and the inverse transform.
+
+### Qi - Setup
+- State that this is an applications bridge, not a new theory page.
+- Keep the central message modest:
+  the phase-preserving VWA approximation can support other surface outputs and reconstruction tasks.
+
+### Cheng - Build
+- Bring the four columns on screen together:
+  directional, kinematics, time series, inverse transform.
+- Give each column a compact visual:
+  directional arrows / wave directions,
+  surface velocity arrows,
+  record-linear-bound time trace,
+  nonlinear-to-linear inverse surface sketch.
+
+### He - Takeaway
+- VWA is a compact structure that can be checked across several application routes.
+- It can support surface outputs, time records, directional cases, and inverse reconstruction.
+- Hand off to result figures rather than more algebra.
+
+### Visual / implementation notes
+- Current low-quality preview command:
+  `manim -ql scenario5_surface_kinematics.py SurfaceKinematicsVWA`
 
 ---
 
