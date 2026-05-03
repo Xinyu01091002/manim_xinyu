@@ -3,6 +3,11 @@ media/
 media_tmp/
 slides/
 
+# Exported Manim Slides browser decks
+projects/phd_confirmation/*_offline.html
+projects/phd_confirmation/slides_demo.html
+projects/phd_confirmation/phd_confirmation_slides_*.html
+
 # Python
 __pycache__/
 *.py[cod]

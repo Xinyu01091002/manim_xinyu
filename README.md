@@ -8,6 +8,16 @@ Personal collection of Manim animation scripts.
 - `skills/` - Manim best practice guides for AI coding assistants, sourced from
   [adithya-s-k/manim_skill](https://github.com/adithya-s-k/manim_skill)
 
+Important project conventions:
+
+- Video scenes use the `scenario*_*.py` naming pattern and remain calibrated for
+  timed Manim video export.
+- Manim Slides experiments use the `slides_*.py` naming pattern and should be
+  presenter-controlled adaptations of existing video scenes, not independent
+  rewrites of the talk.
+- Generated Manim outputs (`media/`, `slides/`, and exported offline HTML decks)
+  are ignored; commit source files and regenerate outputs locally.
+
 ## Running a project
 
 ```bash
@@ -96,6 +106,14 @@ $manim = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim"
 
 & $env:IMAGEIO_FFMPEG_EXE -y -f concat -safe 0 -i concat_high_quality.txt -c copy media/videos/phd_confirmation_full_1080p60.mp4
 ```
+
+The PhD confirmation folder also has an early Manim Slides workflow:
+
+- `slides_demo.py` is a small technical proof of concept for slide rendering.
+- `slides_s0_why_nonlinear.py` is the current faithful slide conversion of S0,
+  derived from `scenario0_why_nonlinear.py`.
+- Future slide conversions should follow the source video scene closely and
+  convert major explanatory waits into `next_slide()` pauses.
 
 ## Creamer Transform Project
 

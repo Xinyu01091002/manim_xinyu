@@ -132,6 +132,91 @@ Merge high-quality scenario videos:
 & $env:IMAGEIO_FFMPEG_EXE -y -f concat -safe 0 -i concat_high_quality.txt -c copy media/videos/phd_confirmation_full_1080p60.mp4
 ```
 
+## Manim Slides Workflow
+
+The slide workflow is separate from the calibrated video workflow. The current
+rule is: **do not rewrite the talk for slides**. A slide scene should be a
+faithful presenter-controlled adaptation of the corresponding video scene,
+preserving the original narrative logic, formulas, visual mechanisms, and bridge
+phrases.
+
+Current slide files:
+
+- `slides_demo.py`: small mechanism proof of concept. It tests Manim Slides
+  rendering, `next_slide()` pauses, and browser export. It is not a content
+  template for the real talk.
+- `slides_s0_why_nonlinear.py`: faithful S0 conversion derived directly from
+  `scenario0_why_nonlinear.py`. It keeps the original wave panels, nonlinear
+  overlay, crest lift, spectrum fingerprint, fixed-gauge time trace, arrival
+  drift, takeaway, and bridge to bound harmonics. The only intended behavioral
+  change is that major `wait()` points become presenter-controlled slide pauses.
+
+Recommended conversion pattern for S1-S5:
+
+1. Copy the source video scene to a `slides_s*_*.py` file.
+2. Change the scene base from `Scene` to a `Slide` fallback wrapper.
+3. Replace major explanatory `self.wait(...)` calls with a small `slide_pause`
+   helper that calls `next_slide(loop=False)`.
+4. Keep long explanatory animations as animations. Do not replace them with
+   summary cards unless the source video already used that visual language.
+5. Drive the bottom navigation progress explicitly at slide pauses; do not use
+   calibrated elapsed-time updaters in presenter-controlled slides.
+
+Render the demo slide deck:
+
+```powershell
+$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
+$env:IMAGEIO_FFMPEG_EXE = "C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
+& $slides render --CE --quality h slides_demo.py PhDConfirmationSlidesDemo
+```
+
+Present it:
+
+```powershell
+$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
+& $slides present PhDConfirmationSlidesDemo
+```
+
+If the native presenter has Qt issues, export a browser deck instead:
+
+```powershell
+$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
+& $slides convert --to html --one-file --offline PhDConfirmationSlidesDemo slides_demo_1080p_offline.html
+```
+
+Render the faithful S0 slide deck:
+
+```powershell
+$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
+$env:IMAGEIO_FFMPEG_EXE = "C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
+& $slides render --CE --quality h slides_s0_why_nonlinear.py S0WhyNonlinearWavesSlides
+& $slides convert --to html --one-file --offline S0WhyNonlinearWavesSlides slides_s0_why_nonlinear_1080p_offline.html
+```
+
+Recommended source-control shape:
+
+- Keep the existing `scenario0_*.py` through `scenario5_*.py` files as the
+  canonical video export path.
+- Keep slide-specific entry points separate, either as `slides_demo.py` while
+  prototyping or as `slides_s0_*.py` / `slides_deck.py` if the experiment grows.
+- Share helper functions, colors, and visual builders where useful, but keep
+  pacing separate: video scenes should remain duration-driven, while slide scenes
+  should be presenter-step-driven.
+- Avoid a global video/slides switch inside the same scene until there is a
+  clear repeated pattern. A switch looks neat early, but it tends to entangle
+  calibrated waits, navigation timing, and slide pauses.
+- Keep `media/`, `slides/`, and exported offline HTML decks out of Git. Commit
+  source `.py` files and documentation, then regenerate outputs locally.
+
+Current local Manim Slides caveat:
+
+- `manim-slides present ...` currently fails on this machine because Manim
+  Slides uses a Qt video API not available through the installed PyQt5 binding.
+  The reliable review path is `manim-slides convert --to html --one-file
+  --offline ...` and opening the generated HTML in a browser.
+
 Current final outputs:
 
 - `media/videos/phd_confirmation_full_1080p60.mp4`
