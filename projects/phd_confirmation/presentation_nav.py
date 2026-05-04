@@ -1,8 +1,11 @@
 from manim import *
 
 
+Text.set_default(font="CMU Serif")
+
 NAV_HEIGHT = 0.30
 PROGRESS_NAV_HEIGHT = 0.72
+PROGRESS_NAV_RADIUS = 0.055
 NAV_BG = ManimColor("#030712")
 NAV_TRACK = ManimColor("#1F2937")
 NAV_MUTED = ManimColor("#CBD5E1")
@@ -15,6 +18,15 @@ NAV_SCENARIO_COLORS = [
     ManimColor("#C77DFF"),
     ManimColor("#8EA7FF"),
 ]
+NAV_SCENARIO_NAMES = [
+    "nonlinear waves",
+    "bound harmonics",
+    "exact cost",
+    "VWA structure",
+    "higher order",
+    "extensions",
+]
+NAV_FONT = "CMU Serif"
 NAV_SUB_GRADIENT_STARTS = [
     ManimColor("#8B6508"),
     ManimColor("#8A4D08"),
@@ -89,9 +101,10 @@ def bottom_progress_nav(
     bar_h = 0.20
     gap = 0.05
 
-    bg = Rectangle(
+    bg = RoundedRectangle(
         width=frame_w,
         height=PROGRESS_NAV_HEIGHT,
+        corner_radius=0.10,
         stroke_width=0,
         fill_color=NAV_BG,
         fill_opacity=0.99,
@@ -135,31 +148,55 @@ def bottom_progress_nav(
             return total_segments - 1
         return int(progress)
 
-    def update_label(label, progress, segment_index, total_segments):
-        label.set_opacity(1.0 if segment_index == active_segment(progress, total_segments) else 0.68)
+    def update_label(label, progress, segment_index, total_segments, show_inactive_labels):
+        is_active = segment_index == active_segment(progress, total_segments)
+        if show_inactive_labels:
+            label.set_opacity(1.0 if is_active else 0.68)
+        else:
+            label.set_opacity(1.0 if is_active else 0.0)
 
-    def segmented_row(names, active_index, y, progress_func, palette=None, active_label=None):
+    def update_base(base, progress, segment_index, total_segments):
+        base.set_stroke(opacity=1.0 if segment_index == active_segment(progress, total_segments) else 0.42)
+
+    def segmented_row(
+        names,
+        active_index,
+        y,
+        progress_func,
+        palette=None,
+        active_label=None,
+        width_weights=None,
+        show_inactive_labels=True,
+    ):
         count = len(names)
-        seg_w = (nav_w - gap * (count - 1)) / count
+        weights = width_weights if width_weights else [1.0] * count
+        unit_w = (nav_w - gap * (count - 1)) / sum(weights)
+        seg_widths = [unit_w * weight for weight in weights]
         row = VGroup()
-        left_x = bar_center_x - nav_w / 2 + seg_w / 2
+        left_edge = bar_center_x - nav_w / 2
         for i, name in enumerate(names):
             color = palette[i % len(palette)] if palette else accent
-            x = left_x + i * (seg_w + gap)
-            base = Rectangle(
+            seg_w = seg_widths[i]
+            x = left_edge + sum(seg_widths[:i]) + gap * i + seg_w / 2
+            base = RoundedRectangle(
                 width=seg_w,
                 height=bar_h,
+                corner_radius=PROGRESS_NAV_RADIUS,
                 stroke_width=0.7,
                 stroke_color=color,
                 fill_color=color,
                 fill_opacity=0.34,
             ).move_to([x, y, 0])
             base.set_stroke(opacity=0.42 if i != active_index else 1.0)
+            base.add_updater(
+                lambda mob, idx=i, count=count: update_base(mob, progress_func(), idx, count)
+            )
             row.add(base)
 
-            fill = Rectangle(
+            fill = RoundedRectangle(
                 width=1e-3,
                 height=bar_h,
+                corner_radius=PROGRESS_NAV_RADIUS,
                 stroke_width=0,
                 fill_color=color,
                 fill_opacity=0,
@@ -180,24 +217,26 @@ def bottom_progress_nav(
             row.add(fill)
 
             label_text = active_label if i == active_index and active_label else name
-            if i == active_index:
-                label = Text(label_text, font_size=14, color=label_color(color), weight=BOLD)
-                label.scale_to_fit_width(min(label.width, seg_w - 0.12))
-                label.move_to(base)
+            current_only = not show_inactive_labels
+            font_size = 13 if current_only else 14 if i == active_index else 11
+            label = Text(
+                label_text,
+                font=NAV_FONT,
+                font_size=font_size,
+                color=label_color(color) if current_only or i == active_index else NAV_TEXT,
+                weight=BOLD if current_only or i == active_index else NORMAL,
+            )
+            label.scale_to_fit_width(min(label.width, seg_w - 0.12))
+            label.move_to(base)
+            if current_only or i == active_index:
                 label.set_stroke(NAV_BG if label_color(color) == NAV_TEXT else WHITE, width=0.6, opacity=0.75)
-                label.add_updater(
-                    lambda mob, idx=i, count=count: update_label(mob, progress_func(), idx, count)
+            label.set_opacity(1.0 if i == active_index or show_inactive_labels else 0.0)
+            label.add_updater(
+                lambda mob, idx=i, count=count, show=show_inactive_labels: update_label(
+                    mob, progress_func(), idx, count, show
                 )
-                row.add(label)
-            elif count <= 6:
-                label = Text(name, font_size=12, color=NAV_TEXT)
-                label.scale_to_fit_width(min(label.width, seg_w - 0.12))
-                label.move_to(base)
-                label.set_opacity(0.68)
-                label.add_updater(
-                    lambda mob, idx=i, count=count: update_label(mob, progress_func(), idx, count)
-                )
-                row.add(label)
+            )
+            row.add(label)
         return row
 
     def scenario_progress():
@@ -212,13 +251,21 @@ def bottom_progress_nav(
     sub_palette = color_gradient([start, NAV_SCENARIO_COLORS[scenario_index], end], len(subscenario_names))
 
     overall_names = [f"S{i}" for i in range(total_scenarios)]
+    active_scenario_name = (
+        NAV_SCENARIO_NAMES[scenario_index]
+        if scenario_index < len(NAV_SCENARIO_NAMES)
+        else scenario_name
+    )
+    overall_weights = [1.0] * total_scenarios
+    overall_weights[scenario_index] = 3.2
     overall = segmented_row(
         overall_names,
         scenario_index,
         y_overall,
         scenario_progress,
         palette=NAV_SCENARIO_COLORS,
-        active_label=f"S{scenario_index}: {scenario_name}",
+        active_label=f"S{scenario_index}: {active_scenario_name}",
+        width_weights=overall_weights,
     )
     detail = segmented_row(
         subscenario_names,
@@ -227,6 +274,7 @@ def bottom_progress_nav(
         detail_progress,
         palette=sub_palette,
         active_label=subscenario_names[min(int(detail_progress()), len(subscenario_names) - 1)],
+        show_inactive_labels=False,
     )
 
     nav = VGroup(bg, top_rule, overall, detail)

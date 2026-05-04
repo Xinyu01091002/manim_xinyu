@@ -86,6 +86,8 @@ The presentation uses the optimized two-tier `bottom_progress_nav` from
 
 - Row 1: whole-talk progress across `S0`-`S5`
 - Row 2: active subscenario progress
+- Style: softened rounded segment bars with compact top-row labels; keep long
+  scenario titles out of the narrow whole-talk row
 - Scenario timing constants should be calibrated against rendered video duration
   after major edits
 
@@ -110,8 +112,12 @@ $manim = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim"
 The PhD confirmation folder also has an early Manim Slides workflow:
 
 - `slides_demo.py` is a small technical proof of concept for slide rendering.
-- `slides_s0_why_nonlinear.py` is the current faithful slide conversion of S0,
-  derived from `scenario0_why_nonlinear.py`.
+- `slides_s0_*.py` through `slides_s5_*.py` are the current
+  presenter-controlled slide conversions of the corresponding video scenarios.
+- `build_linked_slides_preview.py` builds the local browser preview that links
+  the generated slide clips, the looping cover, and the S5 loop.
+- `build_s0_nav_slides_preview.py` is a small local QA helper for testing bottom
+  navigation changes against S0 before rerendering the full deck.
 - Future slide conversions should follow the source video scene closely and
   convert major explanatory waits into `next_slide()` pauses.
 

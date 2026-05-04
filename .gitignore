@@ -5,8 +5,10 @@ slides/
 
 # Exported Manim Slides browser decks
 projects/phd_confirmation/*_offline.html
+projects/phd_confirmation/slides_*_offline.html
 projects/phd_confirmation/slides_demo.html
 projects/phd_confirmation/phd_confirmation_slides_*.html
+projects/phd_confirmation/nav_*_preview.html
 
 # Python
 __pycache__/

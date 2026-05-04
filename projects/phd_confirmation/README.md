@@ -33,8 +33,14 @@ Current visual style:
 - bright continuous scenario palette:
   `#FFE45E`, `#FFB84D`, `#FF7A59`, `#FF5DA2`, `#C77DFF`, `#8EA7FF`
 - subscenario bars use a gradient derived from the active scenario color
-- active labels are larger and stroked for contrast
-- inactive labels remain visible but lower opacity
+- whole-presentation and subscenario segments are rounded bars, not hard-edged
+  rectangles
+- the whole-presentation row shows compact `S0`-`S5` labels, with the active
+  scenario widened to show its short scenario name
+- the subscenario row keeps all colored progress segments but shows text only
+  for the currently active subscenario, avoiding squeezed inactive labels
+- active labels are stroked for contrast; use ASCII separators such as `:`
+  rather than typographic middots to avoid encoding artifacts in small labels
 
 Performance rule:
 
@@ -150,6 +156,20 @@ Current slide files:
   overlay, crest lift, spectrum fingerprint, fixed-gauge time trace, arrival
   drift, takeaway, and bridge to bound harmonics. The only intended behavioral
   change is that major `wait()` points become presenter-controlled slide pauses.
+- `slides_s1_bound_harmonics.py`: faithful S1 conversion derived directly from
+  `scenario1_bound_harmonics.py`. It keeps the original linear component setup,
+  set-down / second-harmonic / third-harmonic reveals, nonlinear-total shape
+  change, locked-group animation, and handoff to exact interaction cost.
+- `slides_s2_exact_interactions.py`: faithful S2 conversion for the exact
+  interaction cost argument, including the full animated cost build rather than
+  a static simplification.
+- `slides_s3_vwa_structure.py`: faithful S3 conversion for the VWA structure and
+  bridge logic.
+- `slides_s4_higher_order_vwa.py`: faithful S4 conversion for the higher-order
+  VWA extension.
+- `slides_s5_surface_kinematics.py`: slide entry point for the S5 surface
+  kinematics extension. For the full linked preview, S5 can also be reused as a
+  looping rendered video when that is faster for review.
 
 Recommended conversion pattern for S1-S5:
 
@@ -195,6 +215,28 @@ $slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
 & $slides convert --to html --one-file --offline S0WhyNonlinearWavesSlides slides_s0_why_nonlinear_1080p_offline.html
 ```
 
+Render the faithful S1 slide deck:
+
+```powershell
+$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
+$env:IMAGEIO_FFMPEG_EXE = "C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
+& $slides render --CE --quality h slides_s1_bound_harmonics.py S1BoundHarmonicsSlides
+& $slides convert --to html --one-file --offline S1BoundHarmonicsSlides slides_s1_bound_harmonics_1080p_offline.html
+```
+
+Render the remaining faithful slide decks:
+
+```powershell
+$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
+$env:IMAGEIO_FFMPEG_EXE = "C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
+& $slides render --CE --quality h slides_s2_exact_interactions.py S2ExactInteractionsSlides
+& $slides render --CE --quality h slides_s3_vwa_structure.py S3VWAStructureSlides
+& $slides render --CE --quality h slides_s4_higher_order_vwa.py S4HigherOrderVWASlides
+& $slides render --CE --quality h slides_s5_surface_kinematics.py S5SurfaceKinematicsSlides
+```
+
 Recommended source-control shape:
 
 - Keep the existing `scenario0_*.py` through `scenario5_*.py` files as the
@@ -209,6 +251,26 @@ Recommended source-control shape:
   calibrated waits, navigation timing, and slide pauses.
 - Keep `media/`, `slides/`, and exported offline HTML decks out of Git. Commit
   source `.py` files and documentation, then regenerate outputs locally.
+
+HTML review modes:
+
+- `--one-file --offline` HTML is best for sending one portable file to someone
+  else. It embeds the slide videos into the HTML, so after re-rendering a slide
+  you should export the HTML again.
+- A linked preview HTML is better for local iteration. It references the short
+  MP4 files under `slides/files/...` plus any deliberately reused scenario MP4s.
+  If a short video is regenerated at the same path, refreshing the browser picks
+  up the change.
+- Rebuild the linked preview with `python build_linked_slides_preview.py` after
+  re-rendering slide JSON/MP4 outputs, so the HTML points at the newest generated
+  slide file hashes.
+- Use `python build_s0_nav_slides_preview.py` after a low-quality S0 render when
+  iterating on navigation typography or spacing. This produces
+  `nav_s0_slide_control_preview.html`, which is intentionally ignored by Git.
+- S5 is currently better treated as a linked looping video slide, because the
+  original S5 scene is a continuous four-column application bridge. Reusing the
+  rendered `SurfaceKinematicsVWA.mp4` is much faster than re-rendering the same
+  heavy `always_redraw` scene through Manim Slides.
 
 Current local Manim Slides caveat:
 

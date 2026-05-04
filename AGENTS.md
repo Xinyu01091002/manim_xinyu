@@ -28,6 +28,12 @@ For `projects/phd_confirmation/`, use the persistent two-tier navigation bar in
   current scenario's gradient palette.
 - Keep the current high-contrast style: near-black background, bright continuous
   scenario palette, and scenario-colored subscenario gradient.
+- Use the current softened navigation style from `presentation_nav.py`: rounded
+  segment bars, rounded fill bars, and compact `S0`-`S5` labels in the whole-talk
+  row. Do not put long scenario titles into the narrow top-row segments; keep
+  longer labels in the active subscenario row or the scene content. In the
+  subscenario row, create all labels once but show text only for the currently
+  active subscenario to avoid cramped inactive labels.
 - Avoid `always_redraw` for the full navigation bar. It made rendering much slower by
   recreating `Text` and rectangles every frame.
 - Preferred implementation: create bar rectangles and labels once, then use updaters only

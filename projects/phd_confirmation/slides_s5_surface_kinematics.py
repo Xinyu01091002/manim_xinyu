@@ -10,6 +10,11 @@ series, and the inverse Creamer problem.
 from manim import *
 from presentation_nav import bottom_progress_nav
 
+try:
+    from manim_slides import Slide
+except Exception:
+    Slide = Scene
+
 C_DIRECTIONAL = GREEN_B
 C_ELEVATION = ORANGE
 C_BOUND = YELLOW
@@ -77,15 +82,22 @@ def wave_group_curve(center, width, carrier, amp, phase, color, stroke_width=3.0
     ).move_to(center + DOWN * y_shift)
 
 
-class SurfaceKinematicsVWA(Scene):
+class S5SurfaceKinematicsSlides(Slide):
+    def slide_pause(self, nav_progress=None, progress=None):
+        if nav_progress is not None and progress is not None:
+            nav_progress.clear_updaters()
+            nav_progress.set_value(progress)
+            self.wait(0.1)
+        if hasattr(self, "next_slide"):
+            self.next_slide(loop=False)
+        else:
+            self.wait(0.8)
+
     def construct(self):
         title = Text("Extensions of VWA", font_size=46, weight=BOLD)
         subtitle = Text("completed application routes using the same compact structure", font_size=28, color=C_MUTED)
         VGroup(title, subtitle).arrange(DOWN, buff=0.10).to_edge(UP, buff=0.18)
         nav_progress = ValueTracker(0)
-        nav_progress.add_updater(
-            lambda tracker, dt: tracker.increment_value(len(SCENARIO5_SUBSCENARIOS) * dt / SCENARIO5_SECONDS)
-        )
         nav = bottom_progress_nav(
             5,
             6,
@@ -126,8 +138,9 @@ class SurfaceKinematicsVWA(Scene):
         ).to_edge(DOWN, buff=1.04)
         takeaway.scale_to_fit_width(11.4)
         self.add(columns, visuals, takeaway)
+        self.slide_pause(nav_progress, 0.35)
         self.play(phase.animate.set_value(8 * TAU), run_time=30.0, rate_func=linear)
-        nav_progress.clear_updaters()
+        self.slide_pause(nav_progress, len(SCENARIO5_SUBSCENARIOS))
 
     def directional_wave_group(self, center, phase):
         group = VGroup()
