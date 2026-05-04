@@ -10,6 +10,8 @@ higher-order extension.
 
 from manim import *
 import numpy as np
+from pathlib import Path
+from presentation_nav import NAV_BG, NAV_FONT, NAV_SCENARIO_COLORS, NAV_SCENARIO_NAMES, NAV_TEXT
 
 config.pixel_width = 1920
 config.pixel_height = 1080
@@ -25,12 +27,15 @@ C_ORANGE = ManimColor("#FFB25E")
 C_GREEN = ManimColor("#66D39B")
 C_TEAL = ManimColor("#4BD4CB")
 C_PURPLE = ManimColor("#C69CFF")
+C_ROSE = ManimColor("#FF8BC7")
 C_GOLD = ManimColor("#FFE45E")
 C_PANEL = ManimColor("#0B1220")
 C_PANEL_EDGE = ManimColor("#263244")
 C_GOLD_LIGHT = ManimColor("#5E4709")
 TEXT_FONT = "CMU Serif"
 COVER_LOOP_SECONDS = 6.0
+COVER_ROOT = Path(__file__).resolve().parent
+COVER_DIRECTIONAL_FRAME_DIR = COVER_ROOT / "data" / "cover_directional_frames"
 
 
 def panel_box(width, height, color):
@@ -99,46 +104,119 @@ class VWAExtensionsCover(Scene):
         self.camera.background_color = C_BG
         loop_phase = ValueTracker(0)
 
-        title = Text("Variable Wavenumber Approximation", font=TEXT_FONT, font_size=40, weight=BOLD, color=C_INK)
-        subtitle = Text("one compact structure for nonlinear wave estimation", font=TEXT_FONT, font_size=22, color=C_MUTED)
-        VGroup(title, subtitle).arrange(DOWN, buff=0.04).to_edge(UP, buff=0.34)
-        self.add(title, subtitle)
+        title = Text("Variable Wavenumber Approximation", font=TEXT_FONT, font_size=42, weight=BOLD, color=C_INK)
+        subtitle = Text("fast nonlinear wave-group modelling across depth, bandwidth, and directionality", font=TEXT_FONT, font_size=21, color=C_MUTED)
+        heading = VGroup(title, subtitle).arrange(DOWN, buff=0.02).to_edge(UP, buff=0.26)
+
+        authors = self.author_line(font_size=17)
+        affiliation = Text(
+            "1 University of Oxford  |  2 University of Manchester  |  3 University of Western Australia",
+            font=TEXT_FONT,
+            font_size=14,
+            color=C_MUTED,
+        )
+        byline = VGroup(authors, affiliation).arrange(DOWN, buff=0.01).next_to(heading, DOWN, buff=0.09)
+        self.add(heading, byline)
 
         centers = [
-            LEFT * 4.65 + UP * 1.02,
-            ORIGIN + UP * 1.02,
-            RIGHT * 4.65 + UP * 1.02,
-            LEFT * 4.65 + DOWN * 1.90,
-            ORIGIN + DOWN * 1.90,
-            RIGHT * 4.65 + DOWN * 1.90,
+            LEFT * 4.60 + UP * 0.76,
+            ORIGIN + UP * 0.76,
+            RIGHT * 4.60 + UP * 0.76,
+            LEFT * 4.60 + DOWN * 2.16,
+            ORIGIN + DOWN * 2.16,
+            RIGHT * 4.60 + DOWN * 2.16,
         ]
         panels = [
             ("bandwidth + depth", C_BLUE, self.bandwidth_depth_panel),
             ("2nd to 5th order", C_GOLD, self.higher_order_panel),
             ("kinematics", C_TEAL, self.kinematics_panel),
-            ("time series", C_ORANGE, self.time_series_panel),
+            ("time series", C_ROSE, self.time_series_panel),
             ("inverse transform", C_PURPLE, self.inverse_panel),
             ("directional", C_GREEN, self.directional_panel),
         ]
 
         for center, (label, color, builder) in zip(centers, panels):
-            box = panel_box(3.58, 2.58, color).move_to(center)
-            heading = Text(label, font=TEXT_FONT, font_size=27, weight=BOLD, color=color).move_to(center + UP * 0.98)
-            heading.scale_to_fit_width(min(heading.width, 3.12))
+            box = panel_box(4.52, 2.86, color).move_to(center)
+            heading = Text(label, font=TEXT_FONT, font_size=31, weight=BOLD, color=color).move_to(center + UP * 1.10)
+            heading.scale_to_fit_width(min(heading.width, 4.04))
             visual = builder(center, loop_phase)
+            visual.scale(1.16, about_point=center + DOWN * 0.02)
             self.add(box, heading, visual)
-
-        authors = Text(
-            "Xinyu Liu, Tianning Tang, Paul Taylor, Wouter Mostert, Thomas Adcock",
-            font=TEXT_FONT,
-            font_size=17,
-            color=C_INK,
-        )
-        affiliation = Text("University of Oxford", font=TEXT_FONT, font_size=16, color=C_MUTED)
-        footer = VGroup(authors, affiliation).arrange(DOWN, buff=0.03)
-        footer.to_edge(DOWN, buff=0.14)
-        self.add(footer)
+        self.add(self.cover_scenario_nav())
         self.play(loop_phase.animate.set_value(TAU), run_time=COVER_LOOP_SECONDS, rate_func=linear)
+
+    def cover_scenario_nav(self):
+        frame_w = config.frame_width
+        frame_h = config.frame_height
+        nav_h = 0.44
+        nav_w = frame_w - 0.28
+        y = -frame_h / 2 + nav_h / 2
+        gap = 0.045
+        segment_w = (nav_w - gap * 5) / 6
+        left = -nav_w / 2
+
+        bg = RoundedRectangle(
+            width=frame_w,
+            height=nav_h,
+            corner_radius=0.09,
+            stroke_width=0,
+            fill_color=NAV_BG,
+            fill_opacity=0.99,
+        ).move_to([0, y, 0])
+        top_rule = Line(
+            [-frame_w / 2, y + nav_h / 2, 0],
+            [frame_w / 2, y + nav_h / 2, 0],
+            color=ManimColor("#334155"),
+            stroke_width=1.1,
+            stroke_opacity=0.9,
+        )
+
+        row = VGroup(bg, top_rule)
+        for i, name in enumerate(NAV_SCENARIO_NAMES):
+            color = NAV_SCENARIO_COLORS[i]
+            x = left + i * (segment_w + gap) + segment_w / 2
+            segment = RoundedRectangle(
+                width=segment_w,
+                height=0.25,
+                corner_radius=0.06,
+                stroke_width=0.8,
+                stroke_color=color,
+                fill_color=color,
+                fill_opacity=0.28,
+            ).move_to([x, y, 0])
+            label = Text(
+                f"S{i} {name}",
+                font=NAV_FONT,
+                font_size=13,
+                color=NAV_TEXT,
+                weight=BOLD,
+            )
+            label.scale_to_fit_width(min(label.width, segment_w - 0.16))
+            label.move_to(segment)
+            row.add(segment, label)
+
+        row.set_z_index(1000)
+        return row
+
+    def author_line(self, font_size=18):
+        entries = [
+            ("Xinyu Liu", "1"),
+            ("Tianning Tang", "1,2"),
+            ("Paul Taylor", "3"),
+            ("Wouter Mostert", "1"),
+            ("Thomas Adcock", "1"),
+        ]
+        pieces = VGroup()
+        for index, (name, affiliation) in enumerate(entries):
+            name_text = Text(name, font=TEXT_FONT, font_size=font_size, color=C_INK)
+            sup = Text(affiliation, font=TEXT_FONT, font_size=font_size * 0.50, color=C_INK)
+            sup.next_to(name_text, UR, buff=0.015).shift(DOWN * 0.05)
+            token = VGroup(name_text, sup)
+            pieces.add(token)
+            if index < len(entries) - 1:
+                pieces.add(Text(",", font=TEXT_FONT, font_size=font_size, color=C_INK))
+        pieces.arrange(RIGHT, buff=0.10, aligned_edge=DOWN)
+        return pieces
 
     def bandwidth_depth_panel(self, center, loop_phase):
         group = VGroup()
@@ -190,58 +268,34 @@ class VWAExtensionsCover(Scene):
         return group
 
     def directional_panel(self, center, loop_phase):
-        group = VGroup()
-        surf_center = center + DOWN * 0.06
-        theta = 55 * DEGREES
-        travel_dir = np.array([np.cos(theta), np.sin(theta), 0.0])
-        crest_dir = np.array([-np.sin(theta), np.cos(theta), 0.0])
+        group = Group()
+        frame_paths = sorted(COVER_DIRECTIONAL_FRAME_DIR.glob("directional_*.png"))
+        if not frame_paths:
+            warning = Text("directional loop missing", font=TEXT_FONT, font_size=20, color=C_GREEN)
+            warning.move_to(center)
+            group.add(warning)
+            return group
 
-        def project(x, y, z):
-            return surf_center + RIGHT * (0.95 * x + 0.42 * y) + UP * (0.30 * y + 0.78 * z)
+        frames = []
+        for frame_path in frame_paths:
+            image = ImageMobject(str(frame_path))
+            image.set_width(3.95)
+            image.move_to(center + DOWN * 0.20)
+            frames.append(image)
 
-        outline_points = []
-        for angle in np.linspace(0, TAU, 96):
-            local = travel_dir * (1.18 * np.cos(angle)) + crest_dir * (0.62 * np.sin(angle))
-            outline_points.append(project(local[0], local[1], 0.0))
-        outline = VMobject(color=C_GREEN, stroke_width=2.0).set_points_smoothly(outline_points).set_opacity(0.34)
-        group.add(outline)
+        def current_frame():
+            phase = loop_phase.get_value() % TAU
+            index = int((phase / TAU) * len(frames)) % len(frames)
+            return frames[index].copy()
 
-        q_samples = np.linspace(-1.18, 1.18, 88)
+        relation = VGroup(
+            MathTex(r"k", font_size=30, color=C_BLUE),
+            Arrow(LEFT * 0.38, RIGHT * 0.38, buff=0, color=C_GREEN, stroke_width=4.0, max_tip_length_to_length_ratio=0.22),
+            MathTex(r"\boldsymbol{\kappa}", font_size=30, color=C_GREEN),
+        ).arrange(RIGHT, buff=0.12).move_to(center + DOWN * 0.88)
+        note = Text("directional wavenumber", font=TEXT_FONT, font_size=15, color=C_MUTED).next_to(relation, DOWN, buff=0.02)
 
-        def moving_surface():
-            surface = VGroup()
-            phase = loop_phase.get_value()
-            for r in np.linspace(-0.52, 0.52, 7):
-                points = []
-                transverse = np.exp(-2.5 * r * r)
-                for q in q_samples:
-                    envelope = np.exp(-1.08 * q * q - 2.5 * r * r)
-                    z = 0.32 * envelope * np.sin(17.5 * q - phase + 0.45)
-                    local = travel_dir * q + crest_dir * r
-                    points.append(project(local[0], local[1], z))
-                wave = VMobject(
-                    color=interpolate_color(C_GREEN, C_INK, 0.18 * transverse),
-                    stroke_width=1.4 + 2.2 * transverse,
-                ).set_points_smoothly(points).set_opacity(0.50 + 0.34 * transverse)
-                surface.add(wave)
-            return surface
-
-        group.add(always_redraw(moving_surface))
-
-        for q in np.arange(-0.95, 1.05, TAU / 17.5):
-            points = []
-            for r in np.linspace(-0.50, 0.50, 26):
-                envelope = np.exp(-1.08 * q * q - 2.5 * r * r)
-                if envelope < 0.24:
-                    continue
-                local = travel_dir * q + crest_dir * r
-                points.append(project(local[0], local[1], 0.05 + 0.20 * envelope))
-            if len(points) > 2:
-                group.add(VMobject(color=C_INK, stroke_width=1.4).set_points_smoothly(points).set_opacity(0.42))
-
-        arrow = Arrow(project(-0.80, -0.42, 0.18), project(0.68, 0.46, 0.26), buff=0, color=C_GREEN, stroke_width=5.0)
-        label = MathTex(r"\mathbf{k}=(k_x,k_y)", font_size=27, color=C_GREEN).move_to(center + DOWN * 1.02)
-        group.add(arrow, label)
+        group.add(always_redraw(current_frame), relation, note)
         return group
 
     def kinematics_panel(self, center, loop_phase):
@@ -267,7 +321,9 @@ class VWAExtensionsCover(Scene):
                 )
 
             group.add(always_redraw(probe_vector))
-        formula = MathTex(r"u_s,\ w_s", font_size=33, color=C_TEAL).move_to(center + DOWN * 1.02)
+        formula = MathTex(r"u_s,", r"\ w_s", font_size=33).move_to(center + DOWN * 1.02)
+        formula[0].set_color(C_TEAL)
+        formula[1].set_color(C_BLUE)
         group.add(formula)
         return group
 
@@ -301,9 +357,16 @@ class VWAExtensionsCover(Scene):
             )
 
         group.add(linear, nonlinear, always_redraw(moving_probe))
-        group.add(Text("probe", font=TEXT_FONT, font_size=19, color=C_INK).move_to(center + LEFT * 0.95 + DOWN * 1.03))
-        group.add(Text("linear", font=TEXT_FONT, font_size=17, color=C_BLUE).move_to(top + RIGHT * 0.72 + UP * 0.36))
-        group.add(Text("nonlinear", font=TEXT_FONT, font_size=17, color=C_ORANGE).move_to(bottom + RIGHT * 0.58 + UP * 0.34))
+        arrow = Arrow(top + DOWN * 0.32, bottom + UP * 0.32, buff=0.05, color=C_ROSE, stroke_width=4.2)
+        relation = VGroup(
+            Text("linear", font=TEXT_FONT, font_size=24, weight=BOLD, color=C_BLUE),
+            Arrow(LEFT * 0.36, RIGHT * 0.36, buff=0, color=C_ROSE, stroke_width=4.0, max_tip_length_to_length_ratio=0.22),
+            Text("nonlinear", font=TEXT_FONT, font_size=24, weight=BOLD, color=C_ORANGE),
+        ).arrange(RIGHT, buff=0.12).move_to(center + DOWN * 0.88)
+        note = Text("add bound harmonics", font=TEXT_FONT, font_size=15, color=C_MUTED).next_to(relation, DOWN, buff=0.02)
+        group.add(arrow, relation, note)
+        group.add(Text("linear input", font=TEXT_FONT, font_size=17, color=C_BLUE).move_to(top + RIGHT * 0.60 + UP * 0.36))
+        group.add(Text("nonlinear output", font=TEXT_FONT, font_size=17, color=C_ORANGE).move_to(bottom + RIGHT * 0.42 + UP * 0.34))
         return group
 
     def inverse_panel(self, center, loop_phase):
@@ -322,12 +385,17 @@ class VWAExtensionsCover(Scene):
         ).move_to(top)
         linear = wave_group(2.60, 10.0, 0.17, 1.35, fixed_phase, C_BLUE, stroke_width=4.0).move_to(bottom)
         arrow = Arrow(top + DOWN * 0.31, bottom + UP * 0.31, buff=0.05, color=C_PURPLE, stroke_width=4.0)
-        relation = MathTex(r"\eta_{\rm nl}\rightarrow\eta_{\rm lin}", font_size=29, color=C_PURPLE).move_to(center + DOWN * 1.02)
+        relation = VGroup(
+            Text("nonlinear", font=TEXT_FONT, font_size=24, weight=BOLD, color=C_ORANGE),
+            Arrow(LEFT * 0.36, RIGHT * 0.36, buff=0, color=C_PURPLE, stroke_width=4.0, max_tip_length_to_length_ratio=0.22),
+            Text("linear", font=TEXT_FONT, font_size=24, weight=BOLD, color=C_BLUE),
+        ).arrange(RIGHT, buff=0.12).move_to(center + DOWN * 0.88)
+        note = Text("recover linear modes", font=TEXT_FONT, font_size=15, color=C_MUTED).next_to(relation, DOWN, buff=0.02)
         labels = VGroup(
-            Text("nonlinear", font=TEXT_FONT, font_size=16, color=C_ORANGE).move_to(top + LEFT * 0.58 + UP * 0.36),
-            Text("linear", font=TEXT_FONT, font_size=16, color=C_BLUE).move_to(bottom + LEFT * 0.74 + UP * 0.36),
+            Text("nonlinear input", font=TEXT_FONT, font_size=16, color=C_ORANGE).move_to(top + LEFT * 0.35 + UP * 0.36),
+            Text("linear modes", font=TEXT_FONT, font_size=16, color=C_BLUE).move_to(bottom + LEFT * 0.52 + UP * 0.36),
         )
-        group.add(nonlinear, linear, arrow, labels, relation)
+        group.add(nonlinear, linear, arrow, labels, relation, note)
         return group
 
     def higher_order_panel(self, center, loop_phase):

@@ -98,7 +98,7 @@ class S1BoundHarmonicsSlides(Slide):
             self.wait(0.8)
 
     def construct(self):
-        title = Text("What did nonlinearity add?", font_size=36, weight=BOLD)
+        title = Text("What did nonlinearity add?", font_size=39, weight=BOLD)
         subtitle = Text("extra wave components that travel with the group", font_size=23, color=C_MUTED)
         VGroup(title, subtitle).arrange(DOWN, buff=0.10).to_edge(UP, buff=0.18)
         nav_progress = ValueTracker(0)
@@ -136,10 +136,10 @@ class S1BoundHarmonicsSlides(Slide):
 
         head_x = Text("wave group", font_size=24, color=C_MUTED).next_to(ax_x, UP, buff=0.18)
         head_k = Text("wavenumber spectrum", font_size=24, color=C_MUTED).next_to(ax_k, UP, buff=0.18)
-        lab_x = ax_x.get_x_axis_label(MathTex("x", font_size=25))
-        lab_eta = ax_x.get_y_axis_label(MathTex(r"\eta", font_size=25))
-        lab_k = ax_k.get_x_axis_label(MathTex("k", font_size=25))
-        lab_spec = ax_k.get_y_axis_label(MathTex(r"|\hat\eta|", font_size=25))
+        lab_x = ax_x.get_x_axis_label(MathTex("x", font_size=27))
+        lab_eta = ax_x.get_y_axis_label(MathTex(r"\eta", font_size=27))
+        lab_k = ax_k.get_x_axis_label(MathTex("k", font_size=27))
+        lab_spec = ax_k.get_y_axis_label(MathTex(r"|\hat\eta|", font_size=27))
 
         self.play(
             LaggedStart(
@@ -156,8 +156,8 @@ class S1BoundHarmonicsSlides(Slide):
         k0_label = MathTex("k_0", font_size=24, color=C_LINEAR).next_to(ax_k.c2p(K0, 0), DOWN, buff=0.10)
 
         linear_card = VGroup(
-            Text("linear theory", font_size=25, color=C_LINEAR),
-            Text("one free-wave component", font_size=21, color=WHITE),
+            Text("linear theory", font_size=27, color=C_LINEAR),
+            Text("one free-wave component", font_size=23, color=WHITE),
             MathTex(r"\eta_1", font_size=34, color=C_LINEAR),
         ).arrange(DOWN, buff=0.10)
         linear_card.to_edge(DOWN, buff=0.86)
@@ -168,16 +168,16 @@ class S1BoundHarmonicsSlides(Slide):
 
         bound_card = VGroup(
             Text("nonlinear interactions", font_size=24, color=C_NL),
-            Text("create bound components", font_size=21, color=WHITE),
+            Text("create bound components", font_size=23, color=WHITE),
             MathTex(r"\eta_{\rm bound}=\eta_2^-+\eta_2^+ + \eta_3^+", font_size=31, color=C_NL),
         ).arrange(DOWN, buff=0.10).move_to(linear_card)
         self.play(FadeOut(linear_card, run_time=0.3), quiet_fade(bound_card, shift=UP * 0.03))
 
         setdown = ax_x.plot(lambda x: eta2_minus(x), x_range=[-12, 12, 0.05], color=C_SETDOWN, stroke_width=2.7)
         spec_0 = ax_k.plot(lambda k: gaussian(k, 0.25, 0.34, 0.34), x_range=[0.01, 2.0, 0.02], color=C_SETDOWN, stroke_width=2.5)
-        lbl_0 = MathTex(r"k\approx0", font_size=20, color=C_SETDOWN).next_to(ax_k.c2p(0.25, 0), DOWN + RIGHT * 0.25, buff=0.10)
+        lbl_0 = MathTex(r"k\approx0", font_size=22, color=C_SETDOWN).next_to(ax_k.c2p(0.25, 0), DOWN + RIGHT * 0.25, buff=0.10)
         tag_setdown = VGroup(
-            Text("set-down", font_size=21, color=C_SETDOWN),
+            Text("set-down", font_size=23, color=C_SETDOWN),
             MathTex(r"\eta_2^-", font_size=29, color=C_SETDOWN),
         ).arrange(RIGHT, buff=0.14)
         tag_setdown.move_to(ax_x.c2p(-6.9, 0.22))
@@ -188,7 +188,7 @@ class S1BoundHarmonicsSlides(Slide):
         spec_2 = ax_k.plot(lambda k: gaussian(k, 2 * K0, 0.40, 0.44), x_range=[0.05, 5.6, 0.02], color=C_BOUND, stroke_width=2.5)
         lbl_2 = MathTex("2k_0", font_size=23, color=C_BOUND).next_to(ax_k.c2p(2 * K0, 0), DOWN, buff=0.10)
         tag_second = VGroup(
-            Text("second harmonic", font_size=21, color=C_BOUND),
+            Text("second harmonic", font_size=23, color=C_BOUND),
             MathTex(r"\eta_2^+", font_size=29, color=C_BOUND),
         ).arrange(RIGHT, buff=0.14)
         tag_second.move_to(ax_x.c2p(5.1, 0.26))
@@ -199,7 +199,7 @@ class S1BoundHarmonicsSlides(Slide):
         spec_3 = ax_k.plot(lambda k: gaussian(k, 3 * K0, 0.46, 0.20), x_range=[0.05, 5.6, 0.02], color=C_THIRD, stroke_width=2.5)
         lbl_3 = MathTex("3k_0", font_size=23, color=C_THIRD).next_to(ax_k.c2p(3 * K0, 0), DOWN, buff=0.10)
         tag_third = VGroup(
-            Text("higher harmonics", font_size=21, color=C_THIRD),
+            Text("higher harmonics", font_size=23, color=C_THIRD),
             MathTex(r"\eta_3^+,\ldots", font_size=29, color=C_THIRD),
         ).arrange(RIGHT, buff=0.14)
         tag_third.move_to(ax_x.c2p(5.0, -0.25))
@@ -209,7 +209,7 @@ class S1BoundHarmonicsSlides(Slide):
         total = ax_x.plot(lambda x: eta_total(x, 0), x_range=[-12, 12, 0.04], color=WHITE, stroke_width=3.0)
         total_card = VGroup(
             MathTex(r"\eta_{\rm nl}=\eta_1+\eta_{\rm bound}", font_size=34, color=WHITE),
-            Text("free component + bound components", font_size=21, color=C_MUTED),
+            Text("free component + bound components", font_size=23, color=C_MUTED),
         ).arrange(DOWN, buff=0.10).move_to(bound_card)
 
         self.play(
@@ -220,7 +220,7 @@ class S1BoundHarmonicsSlides(Slide):
 
         crest_line = DashedLine(ax_x.c2p(-2.8, A), ax_x.c2p(2.8, A), color=C_LINEAR, stroke_width=1.2, dash_length=0.09)
         crest_arrow = DoubleArrow(ax_x.c2p(0, A), ax_x.c2p(0, eta_total(0, 0)), color=C_NL, buff=0, stroke_width=2.2, tip_length=0.12)
-        shape_note = Text("bound terms reshape the group", font_size=21, color=C_NL)
+        shape_note = Text("bound terms reshape the group", font_size=23, color=C_NL)
         shape_note.scale_to_fit_width(3.8)
         shape_note.next_to(ax_k, DOWN, buff=0.36)
         self.play(Create(crest_line), GrowArrow(crest_arrow), quiet_fade(shape_note))
@@ -251,7 +251,7 @@ class S1BoundHarmonicsSlides(Slide):
         group_window = SurroundingRectangle(ax_x, color=C_NL, buff=0.10, corner_radius=0.07)
         lock_note = VGroup(
             Text("bound components", font_size=23, color=C_NL),
-            Text("stay inside the moving group", font_size=21, color=WHITE),
+            Text("stay inside the moving group", font_size=23, color=WHITE),
         ).arrange(DOWN, buff=0.08)
         lock_note.scale_to_fit_width(4.2)
         lock_note.next_to(ax_k, DOWN, buff=0.36)
@@ -277,7 +277,7 @@ class S1BoundHarmonicsSlides(Slide):
             Text("They are generated by nonlinear interactions", font_size=26, color=C_MUTED),
             Text("and remain tied to the primary group.", font_size=26, color=C_MUTED),
         ).arrange(DOWN, buff=0.10)
-        next_scene = Text("Next: how expensive is exact interaction theory?", font_size=25, color=C_BOUND)
+        next_scene = Text("Next: how expensive is exact interaction theory?", font_size=27, color=C_BOUND)
         ending = VGroup(end_question, end_answer, next_scene).arrange(DOWN, buff=0.34).move_to(ORIGIN)
         ending.scale_to_fit_width(11.0)
 

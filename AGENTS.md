@@ -34,6 +34,9 @@ For `projects/phd_confirmation/`, use the persistent two-tier navigation bar in
   longer labels in the active subscenario row or the scene content. In the
   subscenario row, create all labels once but show text only for the currently
   active subscenario to avoid cramped inactive labels.
+- Keep navigation labels as plain CMU Serif text with direct high-contrast
+  colors: cool white for inactive labels and warm white for active labels. Do
+  not add text strokes, dark label capsules, or other backdrops around nav text.
 - Avoid `always_redraw` for the full navigation bar. It made rendering much slower by
   recreating `Text` and rectangles every frame.
 - Preferred implementation: create bar rectangles and labels once, then use updaters only

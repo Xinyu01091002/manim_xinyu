@@ -32,6 +32,8 @@ SCENARIO2_SUBSCENARIOS = [
     "pair formula",
     "pair accumulation",
     "cost scaling",
+    "measured bottleneck",
+    "directional explosion",
     "VWA question",
 ]
 
@@ -289,6 +291,124 @@ class S2ExactInteractionsSlides(Slide):
         self.clear()
         self.add(nav_progress, nav)
 
+        measured_title = Text("The exact summation is already the bottleneck", font_size=34, weight=BOLD)
+        measured_sub = Text(
+            "MF12 explicit interactions become slow before we add repeated design loops",
+            font_size=22,
+            color=C_MUTED,
+        )
+        VGroup(measured_title, measured_sub).arrange(DOWN, buff=0.08).to_edge(UP, buff=0.20)
+
+        table_rows = [
+            (r"\alpha", r"N_c", r"\eta^{(22)}", r"\eta^{(33)}"),
+            ("1", "126", r"4.1{\times}10^3\!-\!1.1{\times}10^4", r"1.7{\times}10^5\!-\!3.1{\times}10^5"),
+            ("8", "66", r"1.4{\times}10^3\!-\!2.8{\times}10^3", r"2.5{\times}10^4\!-\!4.9{\times}10^4"),
+        ]
+        table = VGroup()
+        for r_i, row in enumerate(table_rows):
+            row_group = VGroup()
+            for c_i, cell in enumerate(row):
+                color = WHITE if r_i == 0 else C_PAIR if c_i in (2, 3) else C_MUTED
+                tex = MathTex(cell, font_size=24 if r_i == 0 else 22, color=color)
+                box = Rectangle(width=[0.85, 0.95, 2.25, 2.25][c_i], height=0.46, stroke_width=0.8, stroke_color=GREY_D)
+                box.set_fill(BLACK, opacity=0.18 if r_i == 0 else 0.06)
+                cell_group = VGroup(box, tex)
+                row_group.add(cell_group)
+            row_group.arrange(RIGHT, buff=0.02)
+            table.add(row_group)
+        table.arrange(DOWN, buff=0.02).move_to([-2.25, 0.40, 0])
+        table_caption = Text("speedup relative to the compact evaluation", font_size=20, color=C_MUTED).next_to(table, DOWN, buff=0.18)
+        table_panel = panel_box(VGroup(table, table_caption), C_PAIR, opacity=0.08, buff=0.20)
+
+        exact_card = VGroup(
+            Text("exact MF12 summation", font_size=24, color=C_PAIR, weight=BOLD),
+            MathTex(r"\sum_m\sum_n\quad\hbox{and}\quad\sum_l\sum_m\sum_n", font_size=31, color=C_PAIR),
+            Text("the number of retained components sets the cost", font_size=20, color=WHITE),
+        ).arrange(DOWN, buff=0.12)
+        exact_card_box = panel_box(exact_card, C_PAIR, opacity=0.09, buff=0.20)
+        exact_block = VGroup(exact_card_box, exact_card).move_to([3.35, 0.72, 0])
+
+        vwa_card = VGroup(
+            Text("compact evaluation time", font_size=24, color=C_VWA, weight=BOLD),
+            MathTex(r"10^{-4}\hbox{--}10^{-3}\ {\rm s}", font_size=32, color=C_VWA),
+            Text("shown only as the reference used for speedup", font_size=19, color=C_MUTED),
+        ).arrange(DOWN, buff=0.10)
+        vwa_card_box = panel_box(vwa_card, C_VWA, opacity=0.08, buff=0.20)
+        vwa_block = VGroup(vwa_card_box, vwa_card).move_to([3.35, -0.88, 0])
+
+        caution = Text(
+            "High-frequency truncation reduces work, but can also change bound-wave statistics.",
+            font_size=20,
+            color=C_MUTED,
+        ).to_edge(DOWN, buff=0.96)
+
+        self.play(quiet_fade(measured_title), quiet_fade(measured_sub), run_time=0.5)
+        self.play(FadeIn(table_panel), quiet_fade(table), quiet_fade(table_caption), quiet_fade(exact_block), quiet_fade(vwa_block), run_time=0.9)
+        self.play(quiet_fade(caution), run_time=0.4)
+        self.slide_pause(nav_progress, 5.0)
+
+        self.play(*[FadeOut(mob) for mob in keep_nav(self.mobjects, nav)], run_time=0.8)
+        self.clear()
+        self.add(nav_progress, nav)
+
+        dir_title = Text("Directional groups make the exact cost explode", font_size=34, weight=BOLD)
+        dir_sub = Text(r"$512\times512$ grid; exact cost rises with retained directional components", font_size=21, color=C_MUTED)
+        VGroup(dir_title, dir_sub).arrange(DOWN, buff=0.08).to_edge(UP, buff=0.20)
+
+        chart_ax = Axes(
+            x_range=[-0.5, 2.5, 1],
+            y_range=[-2.0, 4.5, 1],
+            x_length=7.2,
+            y_length=3.2,
+            axis_config={"include_tip": False, "stroke_color": GREY_B, "stroke_width": 1.5},
+        ).move_to([-1.60, -0.18, 0])
+        y_lab = MathTex(r"\log_{10}({\rm time/s})", font_size=24, color=C_MUTED).next_to(chart_ax, LEFT, buff=0.18).rotate(PI / 2)
+        sigma_labels = VGroup(
+            *[MathTex(fr"{s}^\circ", font_size=22, color=C_MUTED).next_to(chart_ax.c2p(i, -2.0), DOWN, buff=0.10) for i, s in enumerate([0, 15, 30])]
+        )
+        x_lab = Text("directional spreading", font_size=21, color=C_MUTED).next_to(chart_ax, DOWN, buff=0.46)
+
+        mf12_a1 = [2.36, 4849.47, 17191.63]
+        mf12_a8 = [0.65, 594.44, 2130.45]
+        vwa = [0.0147, 0.0148, 0.0163]
+        bars = VGroup()
+        for i in range(3):
+            for offset, value, color in [(-0.18, mf12_a1[i], C_PAIR), (0.0, mf12_a8[i], C_TRIAD), (0.18, vwa[i], C_VWA)]:
+                y0 = chart_ax.c2p(i + offset, -2.0)
+                y1 = chart_ax.c2p(i + offset, np.log10(value))
+                bar = Rectangle(width=0.12, height=max(0.03, y1[1] - y0[1]), stroke_width=0, fill_color=color, fill_opacity=0.92)
+                bar.move_to([(y0[0] + y1[0]) / 2, (y0[1] + y1[1]) / 2, 0])
+                bars.add(bar)
+
+        legend = VGroup(
+            VGroup(Square(0.14, fill_color=C_PAIR, fill_opacity=1, stroke_width=0), Text(r"MF12, $\alpha=1$", font_size=18, color=WHITE)).arrange(RIGHT, buff=0.10),
+            VGroup(Square(0.14, fill_color=C_TRIAD, fill_opacity=1, stroke_width=0), Text(r"MF12, $\alpha=8$", font_size=18, color=WHITE)).arrange(RIGHT, buff=0.10),
+            VGroup(Square(0.14, fill_color=C_VWA, fill_opacity=1, stroke_width=0), Text("compact eval.", font_size=18, color=WHITE)).arrange(RIGHT, buff=0.10),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.08)
+        legend_box = panel_box(legend, GREY_D, opacity=0.20, buff=0.12)
+        legend_group = VGroup(legend_box, legend).move_to([3.65, 1.20, 0])
+
+        nc_table = VGroup(
+            Text("retained components", font_size=22, color=WHITE, weight=BOLD),
+            MathTex(r"\sigma=0^\circ:\quad N_c=39,\ 20", font_size=23, color=C_MUTED),
+            MathTex(r"\sigma=15^\circ:\quad N_c=1776,\ 624", font_size=23, color=C_MUTED),
+            MathTex(r"\sigma=30^\circ:\quad N_c=3337,\ 1176", font_size=23, color=C_MUTED),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
+        nc_panel = panel_box(nc_table, C_PANEL, opacity=0.10, buff=0.18)
+        nc_group = VGroup(nc_panel, nc_table).move_to([3.55, -0.75, 0])
+
+        dir_takeaway = Text("MF12 grows from seconds to hours as directional components are retained.", font_size=22, color=C_PAIR)
+        dir_takeaway.to_edge(DOWN, buff=0.95)
+
+        self.play(quiet_fade(dir_title), quiet_fade(dir_sub), run_time=0.5)
+        self.play(Create(chart_ax), FadeIn(y_lab), FadeIn(sigma_labels), FadeIn(x_lab), FadeIn(bars), quiet_fade(legend_group), quiet_fade(nc_group), run_time=1.0)
+        self.play(quiet_fade(dir_takeaway), run_time=0.4)
+        self.slide_pause(nav_progress, 6.0)
+
+        self.play(*[FadeOut(mob) for mob in keep_nav(self.mobjects, nav)], run_time=0.8)
+        self.clear()
+        self.add(nav_progress, nav)
+
         bridge = VGroup(
             Text("Can we keep the physics", font_size=34, weight=BOLD, color=WHITE),
             Text("without evaluating every pair?", font_size=34, weight=BOLD, color=WHITE),
@@ -301,4 +421,4 @@ class S2ExactInteractionsSlides(Slide):
         self.play(quiet_fade(bridge[0]), quiet_fade(bridge[1]), run_time=0.6)
         self.play(quiet_fade(bridge[2]), run_time=0.6)
         self.play(quiet_fade(bridge[3]), run_time=0.6)
-        self.slide_pause(nav_progress, 5.0)
+        self.slide_pause(nav_progress, 7.0)

@@ -45,3 +45,44 @@ Combined output:
 - S2 navigation timing was corrected to the high-quality duration and rerendered with
   `--disable_caching` before final merge.
 - Final merge used ffmpeg concat with `-c copy` to avoid recompression.
+
+## 2026-05-04
+
+Continued the PhD confirmation work on the Manim Slides route. The video
+scenarios remain the calibrated export path, while the slide route is now the
+main presenter-controlled review surface.
+
+### Slide Deck State
+
+- Added a looping black cover scene, `scenario_cover_eye_attractor.py`, with
+  author/affiliation text, a compact S0-S5 overview bar, and six visual panels.
+- Replaced the cover directional panel with rendered directional wave-group
+  frames from `data/cover_directional_frames/` and added the `k -> \kappa`
+  directional-wavenumber cue.
+- Updated `build_linked_slides_preview.py` so the linked preview includes S5 from
+  `S5SurfaceKinematicsSlides` instead of appending a separate continuous S5 loop.
+- Kept the accepted local S2 checkpoint by pointing `S2ExactInteractionsSlides`
+  at the older local slide assets generated around `2026-05-04 15:46`.
+- Added result-bearing slide sections:
+  - S3: split MF12/VWA kernel comparison, waveform result images, and Q sweep.
+  - S4: 2nd-to-5th-order unidirectional surface-elevation result image.
+  - S5: synchronized cover-style directional, time-series, inverse-transform,
+    and kinematics visual semantics.
+
+### Source Data
+
+- Kernel CSVs and metadata: `data/kernel_data/`
+- Waveform result images and CSV input: `data/waveform_eta22/`
+- Q sweep image and CSV input: `data/q_metric/`
+- Higher-order result image: `data/higher_order/`
+- Cover directional source video/frames: `data/cover_assets/` and
+  `data/cover_directional_frames/`
+
+### Verification
+
+- Rendered low-quality S2 after re-establishing the local 9-slide checkpoint.
+- Converted `slides_s2_exact_interactions_480p_offline.html` from the accepted
+  S2 slide JSON.
+- Rebuilt `phd_confirmation_slides_linked_preview.html`; current linked preview
+  has 63 linked slides.
+- Rendered the cover scene at `1080p60` after adding the `k -> \kappa` cue.

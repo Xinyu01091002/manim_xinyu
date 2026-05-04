@@ -17,6 +17,7 @@ C_LINEAR = BLUE_B
 C_KIN = TEAL
 C_US = TEAL
 C_WS = BLUE_D
+C_TIME = ManimColor("#FF8BC7")
 C_MUTED = GREY_B
 C_PANEL = GREY_D
 C_INVERSE = PURPLE_B
@@ -33,6 +34,13 @@ def frame_box(center, width, height, color):
     box = RoundedRectangle(width=width, height=height, corner_radius=0.08, color=color, stroke_width=2.4)
     box.set_fill(BLACK, opacity=0.055)
     return box.move_to(center)
+
+
+def semantic_badge(center, width, height, color, fill_opacity=0.08, stroke_opacity=0.8):
+    badge = RoundedRectangle(width=width, height=height, corner_radius=0.12, color=color, stroke_width=1.8)
+    badge.set_fill(color, opacity=fill_opacity)
+    badge.set_stroke(color, opacity=stroke_opacity)
+    return badge.move_to(center)
 
 
 def axes_at(center, width=2.25, height=1.08, x_label="x", y_label=r"\eta", font_size=17):
@@ -102,7 +110,7 @@ class SurfaceKinematicsVWA(Scene):
         headings = [
             ("directional", C_DIRECTIONAL),
             ("kinematics", C_KIN),
-            ("time series", C_ELEVATION),
+            ("time series", C_TIME),
             ("inverse transform", C_INVERSE),
         ]
 
@@ -184,12 +192,17 @@ class SurfaceKinematicsVWA(Scene):
                 group.add(VMobject(color=WHITE, stroke_width=1.5).set_points_smoothly(points).set_opacity(0.34))
 
         arrow = Arrow(project(-0.76, -0.47, 0.22), project(0.66, 0.50, 0.31), buff=0, color=C_DIRECTIONAL, stroke_width=5.0)
-        label = MathTex(r"\mathbf{k}=(k_x,k_y)", font_size=25, color=C_DIRECTIONAL).move_to(center + DOWN * 1.05)
+        travel_badge = semantic_badge(center + DOWN * 0.97, 1.92, 0.50, C_DIRECTIONAL, fill_opacity=0.06, stroke_opacity=0.55)
+        label = VGroup(
+            MathTex(r"k", font_size=24, color=C_LINEAR),
+            Arrow(LEFT * 0.26, RIGHT * 0.26, buff=0, color=C_DIRECTIONAL, stroke_width=3.0, max_tip_length_to_length_ratio=0.28),
+            MathTex(r"\boldsymbol{\kappa}", font_size=24, color=C_DIRECTIONAL),
+        ).arrange(RIGHT, buff=0.08).move_to(travel_badge.get_center())
         xy = VGroup(
             MathTex("x", font_size=18, color=C_MUTED).move_to(project(1.13, -0.70, 0)),
             MathTex("y", font_size=18, color=C_MUTED).move_to(project(-1.03, 0.80, 0)),
         )
-        group.add(arrow, xy, label)
+        group.add(arrow, xy, travel_badge, label)
         return group
 
     def kinematics_visual(self, center, phase):
@@ -240,14 +253,42 @@ class SurfaceKinematicsVWA(Scene):
             Line(linear_center + RIGHT * cursor_x + DOWN * 0.39, linear_center + RIGHT * cursor_x + UP * 0.39, color=WHITE, stroke_width=2.2),
             Dot(linear_center + RIGHT * cursor_x + UP * y_lin, radius=0.040, color=WHITE),
         )
-        arrow = Arrow(linear_center + DOWN * 0.28, nonlinear_center + UP * 0.28, buff=0.05, color=C_MUTED, stroke_width=2.2)
+        transfer = DashedLine(
+            linear_center + RIGHT * cursor_x + UP * y_lin,
+            nonlinear_center + RIGHT * cursor_x + UP * y_nl,
+            color=C_TIME,
+            stroke_width=1.8,
+            dash_length=0.05,
+        ).set_opacity(0.72)
+        arrow = Arrow(linear_center + DOWN * 0.28, nonlinear_center + UP * 0.28, buff=0.05, color=C_TIME, stroke_width=2.2)
         cursor_lin = DashedLine(linear_center + RIGHT * cursor_x + DOWN * 0.33, linear_center + RIGHT * cursor_x + UP * y_lin, color=WHITE, stroke_width=1.7, dash_length=0.04)
         cursor_nl = DashedLine(nonlinear_center + RIGHT * cursor_x + DOWN * 0.33, nonlinear_center + RIGHT * cursor_x + UP * y_nl, color=WHITE, stroke_width=1.7, dash_length=0.04)
         labels = VGroup(
-            Text("linear", font_size=17, color=C_LINEAR).move_to(linear_center + RIGHT * 0.48 + UP * 0.40),
-            Text("nonlinear", font_size=17, color=C_ELEVATION).move_to(nonlinear_center + RIGHT * 0.36 + UP * 0.40),
+            Text("linear input", font_size=15, color=C_LINEAR).move_to(linear_center + RIGHT * 0.48 + UP * 0.40),
+            Text("nonlinear output", font_size=14, color=C_ELEVATION).move_to(nonlinear_center + RIGHT * 0.36 + UP * 0.40),
         )
-        group.add(linear, nonlinear, arrow, probe, cursor_lin, cursor_nl, Dot(linear_center + RIGHT * cursor_x + UP * y_lin, radius=0.030, color=WHITE), Dot(nonlinear_center + RIGHT * cursor_x + UP * y_nl, radius=0.030, color=WHITE), labels)
+        relation = VGroup(
+            Text("linear", font_size=15, color=C_LINEAR, weight=BOLD),
+            Arrow(LEFT * 0.26, RIGHT * 0.26, buff=0, color=C_TIME, stroke_width=3.0, max_tip_length_to_length_ratio=0.28),
+            Text("nonlinear", font_size=15, color=C_ELEVATION, weight=BOLD),
+        ).arrange(RIGHT, buff=0.08)
+        note = Text("add bound harmonics", font_size=10, color=C_MUTED)
+        relation_group = VGroup(relation, note).arrange(DOWN, buff=0.03).move_to(center + DOWN * 1.01)
+        relation_badge = semantic_badge(relation_group.get_center(), 2.00, 0.54, C_TIME)
+        group.add(
+            linear,
+            nonlinear,
+            arrow,
+            probe,
+            transfer,
+            cursor_lin,
+            cursor_nl,
+            Dot(linear_center + RIGHT * cursor_x + UP * y_lin, radius=0.030, color=WHITE),
+            Dot(nonlinear_center + RIGHT * cursor_x + UP * y_nl, radius=0.030, color=WHITE),
+            labels,
+            relation_badge,
+            relation_group,
+        )
         return group
 
     def inverse_creamer_visual(self, center, phase):
@@ -268,9 +309,16 @@ class SurfaceKinematicsVWA(Scene):
         linear = wave_group_curve(linear_center, 2.38, 10.0, 0.18, fixed_phase, C_LINEAR, stroke_width=3.8, envelope=1.38)
         arrow = Arrow(nonlinear_center + DOWN * 0.30, linear_center + UP * 0.30, buff=0.05, color=C_INVERSE, stroke_width=3.0, max_tip_length_to_length_ratio=0.24)
         labels = VGroup(
-            Text("nonlinear space", font_size=16, color=C_ELEVATION).move_to(nonlinear_center + LEFT * 0.38 + UP * 0.40),
-            Text("linear space", font_size=16, color=C_LINEAR).move_to(linear_center + LEFT * 0.50 + UP * 0.40),
+            Text("nonlinear input", font_size=14, color=C_ELEVATION).move_to(nonlinear_center + LEFT * 0.38 + UP * 0.40),
+            Text("linear modes", font_size=14, color=C_LINEAR).move_to(linear_center + LEFT * 0.50 + UP * 0.40),
         )
-        relation = MathTex(r"\eta_{\rm nl}(x)\rightarrow\eta_{\rm lin}(x)", font_size=23, color=C_INVERSE).move_to(center + DOWN * 1.07)
-        group.add(nonlinear, linear, arrow, labels, relation)
+        relation = VGroup(
+            Text("nonlinear", font_size=15, color=C_ELEVATION, weight=BOLD),
+            Arrow(LEFT * 0.26, RIGHT * 0.26, buff=0, color=C_INVERSE, stroke_width=3.0, max_tip_length_to_length_ratio=0.28),
+            Text("linear modes", font_size=15, color=C_LINEAR, weight=BOLD),
+        ).arrange(RIGHT, buff=0.08)
+        note = Text("recover linear modes", font_size=10, color=C_MUTED)
+        relation_group = VGroup(relation, note).arrange(DOWN, buff=0.03).move_to(center + DOWN * 1.01)
+        relation_badge = semantic_badge(relation_group.get_center(), 2.14, 0.54, C_INVERSE, fill_opacity=0.06, stroke_opacity=0.65)
+        group.add(nonlinear, linear, arrow, labels, relation_badge, relation_group)
         return group

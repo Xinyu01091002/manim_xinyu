@@ -146,6 +146,28 @@ faithful presenter-controlled adaptation of the corresponding video scene,
 preserving the original narrative logic, formulas, visual mechanisms, and bridge
 phrases.
 
+Current local slide-deck status:
+
+- `scenario_cover_eye_attractor.py` is the looping black cover used by
+  `build_linked_slides_preview.py`. It shows title, authors, Oxford/Manchester/UWA
+  affiliations, the bottom S0-S5 overview bar, and six compact animated panels.
+- The cover directional panel uses source frames under
+  `data/cover_directional_frames/` and marks the unidirectional-to-directional
+  transition as `k -> \boldsymbol{\kappa}`.
+- S2 currently uses the accepted local 9-slide checkpoint with the measured
+  bottleneck and directional-cost pages. The linked preview is intentionally
+  pointed at the older accepted S2 slide assets generated around `2026-05-04
+  15:46`, not the later experimental rerender.
+- S3 now includes the second-order result section: split MF12/VWA kernel
+  comparisons, waveform-image placeholders/results, and the imported Q sweep
+  image from `data/q_metric/`.
+- S4 includes the higher-order result image from `data/higher_order/`.
+- S5 is now a real Manim Slides scene in the linked deck, not just a reused
+  looping scenario video. Its directional, time-series, inverse-transform, and
+  kinematics panels follow the cover color semantics: blue for linear, orange
+  for nonlinear, rose for time-series mapping, teal/blue for `u_s,w_s`, and
+  purple for inverse recovery.
+
 Current slide files:
 
 - `slides_demo.py`: small mechanism proof of concept. It tests Manim Slides
@@ -161,15 +183,15 @@ Current slide files:
   set-down / second-harmonic / third-harmonic reveals, nonlinear-total shape
   change, locked-group animation, and handoff to exact interaction cost.
 - `slides_s2_exact_interactions.py`: faithful S2 conversion for the exact
-  interaction cost argument, including the full animated cost build rather than
-  a static simplification.
+  interaction cost argument, including the full animated cost build, measured
+  timing bottleneck, and directional-cost comparison rather than a static
+  simplification.
 - `slides_s3_vwa_structure.py`: faithful S3 conversion for the VWA structure and
-  bridge logic.
+  bridge logic, extended with second-order kernel/waveform/Q result slides.
 - `slides_s4_higher_order_vwa.py`: faithful S4 conversion for the higher-order
-  VWA extension.
+  VWA extension, extended with the 2nd-to-5th-order result figure.
 - `slides_s5_surface_kinematics.py`: slide entry point for the S5 surface
-  kinematics extension. For the full linked preview, S5 can also be reused as a
-  looping rendered video when that is faster for review.
+  kinematics extension. It is now included directly in the full linked preview.
 
 Recommended conversion pattern for S1-S5:
 
@@ -237,6 +259,13 @@ $slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
 & $slides render --CE --quality h slides_s5_surface_kinematics.py S5SurfaceKinematicsSlides
 ```
 
+For low-quality iteration, use the same commands with `--quality l` and
+`--disable_caching`:
+
+```powershell
+& $slides render --CE -- --quality l --disable_caching slides_s2_exact_interactions.py S2ExactInteractionsSlides
+```
+
 Recommended source-control shape:
 
 - Keep the existing `scenario0_*.py` through `scenario5_*.py` files as the
@@ -264,13 +293,14 @@ HTML review modes:
 - Rebuild the linked preview with `python build_linked_slides_preview.py` after
   re-rendering slide JSON/MP4 outputs, so the HTML points at the newest generated
   slide file hashes.
+- When preserving an accepted local checkpoint without rerendering, update the
+  relevant `slides/<DeckName>.json` to point at the accepted `slides/files/...`
+  MP4 hashes, then rebuild `phd_confirmation_slides_linked_preview.html`.
 - Use `python build_s0_nav_slides_preview.py` after a low-quality S0 render when
   iterating on navigation typography or spacing. This produces
   `nav_s0_slide_control_preview.html`, which is intentionally ignored by Git.
-- S5 is currently better treated as a linked looping video slide, because the
-  original S5 scene is a continuous four-column application bridge. Reusing the
-  rendered `SurfaceKinematicsVWA.mp4` is much faster than re-rendering the same
-  heavy `always_redraw` scene through Manim Slides.
+- `build_linked_slides_preview.py` currently reads S0-S5 Manim Slides JSON plus
+  the looping cover video; it no longer appends a separate S5 scenario loop.
 
 Current local Manim Slides caveat:
 

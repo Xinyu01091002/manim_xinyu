@@ -93,7 +93,7 @@ class S0WhyNonlinearWavesSlides(Slide):
             self.wait(0.8)
 
     def construct(self):
-        title = Text("Why nonlinear waves matter", font_size=36, weight=BOLD)
+        title = Text("Why nonlinear waves matter", font_size=39, weight=BOLD)
         subtitle = Text("shape changes first; timing errors accumulate later", font_size=23, color=C_MUTED)
         VGroup(title, subtitle).arrange(DOWN, buff=0.10).to_edge(UP, buff=0.18)
         nav_progress = ValueTracker(0)
@@ -130,10 +130,10 @@ class S0WhyNonlinearWavesSlides(Slide):
 
         head_s = Text("spatial wave group", font_size=24, color=C_MUTED).next_to(ax_s, UP, buff=0.18)
         head_k = Text("wavenumber spectrum", font_size=24, color=C_MUTED).next_to(ax_k, UP, buff=0.18)
-        lab_xs = ax_s.get_x_axis_label(MathTex("x", font_size=25))
-        lab_ys = ax_s.get_y_axis_label(MathTex(r"\eta", font_size=25))
-        lab_xk = ax_k.get_x_axis_label(MathTex("k", font_size=25))
-        lab_yk = ax_k.get_y_axis_label(MathTex(r"|\hat\eta|", font_size=25))
+        lab_xs = ax_s.get_x_axis_label(MathTex("x", font_size=27))
+        lab_ys = ax_s.get_y_axis_label(MathTex(r"\eta", font_size=27))
+        lab_xk = ax_k.get_x_axis_label(MathTex("k", font_size=27))
+        lab_yk = ax_k.get_y_axis_label(MathTex(r"|\hat\eta|", font_size=27))
 
         self.play(
             LaggedStart(
@@ -147,10 +147,10 @@ class S0WhyNonlinearWavesSlides(Slide):
         env_u = ax_s.plot(lambda x: A * env(x), x_range=[-14, 14, 0.10], color=BLUE_A, stroke_width=1.1, stroke_opacity=0.45)
         env_l = ax_s.plot(lambda x: -A * env(x), x_range=[-14, 14, 0.10], color=BLUE_A, stroke_width=1.1, stroke_opacity=0.45)
         lin_spec = ax_k.plot(lambda k: gaussian(k, K0, 0.32, 1.0), x_range=[0.05, 5.6, 0.02], color=C_LINEAR, stroke_width=2.6)
-        k0_label = MathTex("k_0", font_size=25, color=C_LINEAR).next_to(ax_k.c2p(K0, 0), DOWN, buff=0.10)
+        k0_label = MathTex("k_0", font_size=27, color=C_LINEAR).next_to(ax_k.c2p(K0, 0), DOWN, buff=0.10)
 
         baseline = VGroup(
-            Text("linear theory", font_size=25, color=C_LINEAR),
+            Text("linear theory", font_size=27, color=C_LINEAR),
             MathTex(r"\eta_{\rm lin}=A(x)\cos(k_0x-\omega_0t)", font_size=30, color=C_LINEAR),
         ).arrange(DOWN, buff=0.10).to_edge(DOWN, buff=1.02)
         self.play(Create(lin_wave), Create(env_u), Create(env_l))
@@ -159,8 +159,8 @@ class S0WhyNonlinearWavesSlides(Slide):
 
         nl_wave = ax_s.plot(lambda x: eta_nl(x, 0), x_range=[-14, 14, 0.04], color=C_NL, stroke_width=2.9)
         nl_note = VGroup(
-            Text("same wave group, different shape", font_size=25, color=C_NL),
-            Text("sharper crests and flatter troughs", font_size=21, color=C_MUTED),
+            Text("same wave group, different shape", font_size=27, color=C_NL),
+            Text("sharper crests and flatter troughs", font_size=23, color=C_MUTED),
         ).arrange(DOWN, buff=0.08).move_to(baseline)
         self.play(FadeOut(baseline, run_time=0.3), quiet_fade(nl_note, shift=UP * 0.03), Create(nl_wave))
 
@@ -171,7 +171,7 @@ class S0WhyNonlinearWavesSlides(Slide):
         h_non = eta_nl(x_non, 0)
         crest_ref = DashedLine(ax_s.c2p(-3.8, h_lin), ax_s.c2p(3.8, h_lin), color=C_LINEAR, stroke_width=1.4, dash_length=0.10)
         crest_arrow = DoubleArrow(ax_s.c2p(x_non, h_lin), ax_s.c2p(x_non, h_non), buff=0, color=C_NL, stroke_width=2.3, tip_length=0.12)
-        crest_label = Text("about 10% crest lift", font_size=21, color=C_NL).next_to(crest_arrow, RIGHT, buff=0.12)
+        crest_label = Text("about 10% crest lift", font_size=23, color=C_NL).next_to(crest_arrow, RIGHT, buff=0.12)
         self.play(Create(crest_ref), GrowArrow(crest_arrow), quiet_fade(crest_label, shift=RIGHT * 0.03))
         self.slide_pause(nav_progress, 2.0)
 
@@ -181,7 +181,7 @@ class S0WhyNonlinearWavesSlides(Slide):
         labels = VGroup(
             MathTex("2k_0", font_size=23, color=C_BOUND).next_to(ax_k.c2p(2 * K0, 0), DOWN, buff=0.10),
             MathTex("3k_0", font_size=23, color=C_THIRD).next_to(ax_k.c2p(3 * K0, 0), DOWN, buff=0.10),
-            MathTex(r"k\approx0", font_size=21, color=C_SETDOWN).next_to(ax_k.c2p(0.25, 0), DOWN + RIGHT * 0.25, buff=0.10),
+            MathTex(r"k\approx0", font_size=23, color=C_SETDOWN).next_to(ax_k.c2p(0.25, 0), DOWN + RIGHT * 0.25, buff=0.10),
         )
         fingerprint = VGroup(
             Text("extra spectral energy", font_size=19, color=WHITE),
@@ -196,8 +196,8 @@ class S0WhyNonlinearWavesSlides(Slide):
 
         probe = DashedLine(ax_s.c2p(X_PROBE, -0.44), ax_s.c2p(X_PROBE, 0.44), color=GREY_C, stroke_width=1.5, dash_length=0.08)
         probe_label = VGroup(
-            Text("fixed gauge", font_size=18, color=GREY_C),
-            MathTex(r"x=11\,{\rm m}", font_size=18, color=GREY_C),
+            Text("fixed gauge", font_size=20, color=GREY_C),
+            MathTex(r"x=11\,{\rm m}", font_size=20, color=GREY_C),
         ).arrange(DOWN, buff=0.04).next_to(ax_s.c2p(X_PROBE, -0.44), DOWN, buff=0.08)
         self.play(Create(probe), quiet_fade(probe_label))
 
@@ -211,8 +211,8 @@ class S0WhyNonlinearWavesSlides(Slide):
             y_axis_config={"numbers_to_include": [-0.2, 0.0, 0.2], "font_size": 21},
         ).to_edge(DOWN, buff=0.98)
         head_t = Text("what the fixed gauge records", font_size=23, color=C_MUTED).next_to(ax_t, UP, buff=0.13)
-        lab_xt = ax_t.get_x_axis_label(MathTex("t", font_size=25))
-        lab_yt = ax_t.get_y_axis_label(MathTex(r"\eta", font_size=25))
+        lab_xt = ax_t.get_x_axis_label(MathTex("t", font_size=27))
+        lab_yt = ax_t.get_y_axis_label(MathTex(r"\eta", font_size=27))
         self.play(Create(ax_t), quiet_fade(head_t), quiet_fade(lab_xt), quiet_fade(lab_yt))
 
         t = ValueTracker(0.001)
@@ -237,10 +237,10 @@ class S0WhyNonlinearWavesSlides(Slide):
         dt_arrow = DoubleArrow(ax_t.c2p(t_non, 0.32), ax_t.c2p(t_lin, 0.32), buff=0, color=WHITE, stroke_width=2.0, tip_length=0.10)
         dt_label = MathTex(rf"\Delta t\approx {delta_ms:.0f}\,{{\rm ms}}", font_size=24, color=WHITE).next_to(dt_arrow, UP, buff=0.06)
         timing_text = VGroup(
-            Text("small speed change", font_size=17, color=C_NL),
-            Text("visible arrival drift", font_size=17, color=C_MUTED),
+            Text("small speed change", font_size=19, color=C_NL),
+            Text("visible arrival drift", font_size=19, color=C_MUTED),
         ).arrange(DOWN, buff=0.05, aligned_edge=LEFT)
-        timing_text.move_to(ax_t.c2p(2.7, 0.29))
+        timing_text.move_to(ax_t.c2p(2.55, 0.53))
         timing = VGroup(
             panel_box(timing_text, color=C_NL, opacity=0.16, buff=0.12),
             timing_text,
@@ -291,8 +291,8 @@ class S0WhyNonlinearWavesSlides(Slide):
             color=WHITE,
         )
         transition_extra = VGroup(
-            Text("Extra wave components", font_size=28, color=C_MUTED),
-            Text("that travel with the group.", font_size=28, color=C_MUTED),
+            Text("Extra wave components", font_size=30, color=C_MUTED),
+            Text("that travel with the group.", font_size=30, color=C_MUTED),
         ).arrange(DOWN, buff=0.10)
         transition_focus = Text(
             "These are bound harmonics.",

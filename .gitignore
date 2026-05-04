@@ -6,9 +6,11 @@ slides/
 # Exported Manim Slides browser decks
 projects/phd_confirmation/*_offline.html
 projects/phd_confirmation/slides_*_offline.html
+projects/phd_confirmation/*_offline_assets/
 projects/phd_confirmation/slides_demo.html
 projects/phd_confirmation/phd_confirmation_slides_*.html
 projects/phd_confirmation/nav_*_preview.html
+projects/phd_confirmation/projects/
 
 # Python
 __pycache__/
@@ -25,3 +27,4 @@ Tex/
 # OS
 .DS_Store
 Thumbs.db
+/.omx/*

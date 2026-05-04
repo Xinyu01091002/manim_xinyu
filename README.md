@@ -86,8 +86,9 @@ The presentation uses the optimized two-tier `bottom_progress_nav` from
 
 - Row 1: whole-talk progress across `S0`-`S5`
 - Row 2: active subscenario progress
-- Style: softened rounded segment bars with compact top-row labels; keep long
-  scenario titles out of the narrow whole-talk row
+- Style: softened rounded segment bars with compact top-row labels; use plain
+  high-contrast CMU Serif nav text without strokes or label backdrops, and keep
+  long scenario titles out of the narrow whole-talk row
 - Scenario timing constants should be calibrated against rendered video duration
   after major edits
 
@@ -115,11 +116,14 @@ The PhD confirmation folder also has an early Manim Slides workflow:
 - `slides_s0_*.py` through `slides_s5_*.py` are the current
   presenter-controlled slide conversions of the corresponding video scenarios.
 - `build_linked_slides_preview.py` builds the local browser preview that links
-  the generated slide clips, the looping cover, and the S5 loop.
+  the looping cover and the generated S0-S5 slide clips.
 - `build_s0_nav_slides_preview.py` is a small local QA helper for testing bottom
   navigation changes against S0 before rerendering the full deck.
 - Future slide conversions should follow the source video scene closely and
   convert major explanatory waits into `next_slide()` pauses.
+- Result figures and CSV inputs needed by the slide scenes live under
+  `projects/phd_confirmation/data/`; generated `media/`, `slides/`, offline
+  HTML, and offline asset folders remain local review outputs.
 
 ## Creamer Transform Project
 

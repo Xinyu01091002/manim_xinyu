@@ -8,6 +8,7 @@ extends to higher-order superharmonic bound waves.
 """
 
 from manim import *
+from pathlib import Path
 from presentation_nav import bottom_progress_nav, keep_nav
 
 try:
@@ -29,8 +30,15 @@ SCENARIO4_SUBSCENARIOS = [
     "phase structure",
     "compact product",
     "cost reduction",
+    "2nd to 5th order",
     "handoff",
 ]
+HIGHER_ORDER_RESULT_IMAGE = (
+    Path(__file__).resolve().parent
+    / "data"
+    / "higher_order"
+    / "unidirectional_eta_orders_2to5_manim.png"
+)
 
 
 def panel(mob, color=C_PANEL, buff=0.18, opacity=0.08):
@@ -39,6 +47,70 @@ def panel(mob, color=C_PANEL, buff=0.18, opacity=0.08):
 
 def quiet_fade(mob, shift=DOWN * 0.03):
     return FadeIn(mob, shift=shift)
+
+
+def make_higher_order_result_slide():
+    title = Text("Second to fifth order: unidirectional surface elevation", font_size=34, weight=BOLD)
+    subtitle = Text(
+        "same Manim-style comparison, now showing the higher-order hierarchy",
+        font_size=23,
+        color=C_MUTED,
+    )
+    header = VGroup(title, subtitle).arrange(DOWN, buff=0.07).to_edge(UP, buff=0.16)
+
+    if HIGHER_ORDER_RESULT_IMAGE.exists():
+        image = ImageMobject(str(HIGHER_ORDER_RESULT_IMAGE))
+        image.set_width(12.65)
+        if image.height > 6.35:
+            image.set_height(6.35)
+        image.next_to(header, DOWN, buff=0.10)
+        return Group(header, image)
+
+    placeholder = RoundedRectangle(
+        width=11.4,
+        height=5.4,
+        corner_radius=0.08,
+        stroke_color=C_VWA,
+        fill_color=C_VWA,
+        fill_opacity=0.06,
+    ).next_to(header, DOWN, buff=0.28)
+    label = Text("waiting for higher-order result figure", font_size=30, color=C_MUTED).move_to(placeholder)
+    return VGroup(header, placeholder, label)
+
+
+def make_higher_order_result_question_slide():
+    title = Text("The formula is compact. What should the result show?", font_size=35, weight=BOLD)
+    subtitle = Text(
+        "After preserving phase and reducing the kernel cost, the check moves back to waveform space.",
+        font_size=23,
+        color=C_MUTED,
+    )
+    header = VGroup(title, subtitle).arrange(DOWN, buff=0.08).to_edge(UP, buff=0.22)
+
+    left = VGroup(
+        Text("compact VWA form", font_size=26, color=C_VWA, weight=BOLD),
+        MathTex(
+            r"\eta_{\rm VWA}^{(nn)}=\Re\!\left\{\eta_{a,K^{(n)}}^{(11)}[\eta_a^{(11)}]^{n-1}\right\}",
+            font_size=31,
+            color=C_VWA,
+        ),
+        Text("one weighted field per order", font_size=22, color=C_MUTED),
+    ).arrange(DOWN, buff=0.14)
+    left.scale_to_fit_width(5.45)
+    left.add_to_back(panel(left, C_VWA, buff=0.20, opacity=0.08))
+
+    right = VGroup(
+        Text("result check", font_size=26, color=C_EXACT, weight=BOLD),
+        MathTex(r"\eta^{(22)},\ \eta^{(33)},\ \eta^{(44)},\ \eta^{(55)}", font_size=34, color=WHITE),
+        Text("do the ordered bound harmonics remain coherent?", font_size=22, color=C_MUTED),
+    ).arrange(DOWN, buff=0.14)
+    right.scale_to_fit_width(5.45)
+    right.add_to_back(panel(right, C_EXACT, buff=0.20, opacity=0.08))
+
+    cards = VGroup(left, right).arrange(RIGHT, buff=0.56).next_to(header, DOWN, buff=0.58)
+    arrow = Arrow(cards.get_bottom() + DOWN * 0.18, cards.get_bottom() + DOWN * 0.64, color=C_WEIGHT, stroke_width=3)
+    cue = Text("next: second to fifth order comparison", font_size=27, color=C_WEIGHT, weight=BOLD).next_to(arrow, DOWN, buff=0.10)
+    return VGroup(header, cards, arrow, cue)
 
 
 class S4HigherOrderVWASlides(Slide):
@@ -53,8 +125,8 @@ class S4HigherOrderVWASlides(Slide):
             self.wait(0.8)
 
     def construct(self):
-        title = Text("Extending VWA to higher order", font_size=38, weight=BOLD)
-        subtitle = Text("same phase structure, compact FFT-ready products", font_size=25, color=C_MUTED)
+        title = Text("Extending VWA to higher order", font_size=41, weight=BOLD)
+        subtitle = Text("same phase structure, compact FFT-ready products", font_size=27, color=C_MUTED)
         VGroup(title, subtitle).arrange(DOWN, buff=0.10).to_edge(UP, buff=0.18)
         nav_progress = ValueTracker(0)
         nav = bottom_progress_nav(
@@ -64,6 +136,9 @@ class S4HigherOrderVWASlides(Slide):
             SCENARIO4_SUBSCENARIOS,
             nav_progress,
             accent=C_VWA,
+            detail_label_color=WHITE,
+            detail_font_size=16,
+            detail_label_stroke=False,
         )
         self.add(nav_progress, nav)
         self.play(quiet_fade(title), quiet_fade(subtitle), run_time=0.7)
@@ -126,7 +201,7 @@ class S4HigherOrderVWASlides(Slide):
                 r"k_{j_1}+\cdots+k_{j_n}",
                 font_size=42,
             ),
-            Text("higher order means higher sum wavenumber, not a new free wave", font_size=25, color=C_MUTED),
+            Text("higher order means higher sum wavenumber, not a new free wave", font_size=27, color=C_MUTED),
         ).arrange(DOWN, buff=0.18).move_to(ORIGIN).shift(DOWN * 0.20)
         phase_keep[1][0].set_color(C_PHASE)
         phase_keep[1][2].set_color(C_WEIGHT)
@@ -144,7 +219,7 @@ class S4HigherOrderVWASlides(Slide):
             r"\eta_{a,K^{(n)}}^{(11)}",
             r"=",
             r"\mathcal F^{-1}\!\left\{K_n^{(n)}(k)\widehat\eta(k)\right\}",
-            font_size=36,
+            font_size=39,
             color=C_WEIGHT,
         )
         compact = MathTex(
@@ -154,7 +229,7 @@ class S4HigherOrderVWASlides(Slide):
             r"\eta_{a,K^{(n)}}^{(11)}(x,t)",
             r"\left[\eta_a^{(11)}(x,t)\right]^{n-1}",
             r"\right\}",
-            font_size=38,
+            font_size=41,
             color=C_VWA,
         )
         compact[0].set_color(WHITE)
@@ -168,10 +243,10 @@ class S4HigherOrderVWASlides(Slide):
 
         product_cards = VGroup()
         for label, expr in [
-            ("second", r"\eta_{a,K^{(2)}}^{(11)}\eta_a^{(11)}"),
-            ("third", r"\eta_{a,K^{(3)}}^{(11)}[\eta_a^{(11)}]^2"),
-            ("fourth", r"\eta_{a,K^{(4)}}^{(11)}[\eta_a^{(11)}]^3"),
-            ("fifth", r"\eta_{a,K^{(5)}}^{(11)}[\eta_a^{(11)}]^4"),
+            ("2nd order", r"\eta_{a,K^{(2)}}^{(11)}\eta_a^{(11)}"),
+            ("3rd order", r"\eta_{a,K^{(3)}}^{(11)}[\eta_a^{(11)}]^2"),
+            ("4th order", r"\eta_{a,K^{(4)}}^{(11)}[\eta_a^{(11)}]^3"),
+            ("5th order", r"\eta_{a,K^{(5)}}^{(11)}[\eta_a^{(11)}]^4"),
         ]:
             body = VGroup(
                 Text(label, font_size=22, color=C_MUTED),
@@ -187,13 +262,13 @@ class S4HigherOrderVWASlides(Slide):
         cost = VGroup(
             VGroup(
                 Text("exact order n", font_size=27, color=C_EXACT),
-                MathTex(r"\mathcal O(N_c^n)", font_size=46, color=C_EXACT),
+                MathTex(r"\mathcal O(N_c^n)", font_size=49, color=C_EXACT),
                 Text("all wavenumber tuples", font_size=22, color=C_MUTED),
             ).arrange(DOWN, buff=0.08),
             Arrow(LEFT, RIGHT, color=C_MUTED, stroke_width=3),
             VGroup(
                 Text("VWA order n", font_size=27, color=C_VWA),
-                MathTex(r"\mathcal O(N_c\log N_c)", font_size=46, color=C_WEIGHT),
+                MathTex(r"\mathcal O(N_c\log N_c)", font_size=49, color=C_WEIGHT),
                 Text("FFT fields + products", font_size=22, color=C_MUTED),
             ).arrange(DOWN, buff=0.08),
         ).arrange(RIGHT, buff=0.42).to_edge(DOWN, buff=0.92)
@@ -205,16 +280,27 @@ class S4HigherOrderVWASlides(Slide):
         self.clear()
         self.add(nav_progress, nav)
 
+        result_question = make_higher_order_result_question_slide()
+        self.play(FadeIn(result_question, shift=DOWN * 0.05), run_time=0.8)
+        self.slide_pause(nav_progress, 5.55)
+        self.play(FadeOut(result_question), run_time=0.55)
+        self.clear()
+        self.add(nav_progress, nav)
+
+        result_slide = make_higher_order_result_slide()
+        self.play(FadeIn(result_slide, shift=DOWN * 0.05), run_time=0.8)
+        self.slide_pause(nav_progress, 6.0)
+        self.play(FadeOut(result_slide), run_time=0.55)
+        self.clear()
+        self.add(nav_progress, nav)
+
         final = VGroup(
-            Text("Higher-order VWA keeps the superharmonic phase structure.", font_size=48, color=WHITE),
-            Text("It approximates kernel amplitudes with reusable wavenumber weights.", font_size=40, color=C_MUTED),
-            Text("Next: how does the compact structure match exact theory and nonlinear simulations?", font_size=40, color=C_VWA),
+            Text("The same VWA structure extends from second to fifth order.", font_size=45, color=WHITE),
+            Text("The result is a compact set of higher-order bound harmonics.", font_size=40, color=C_MUTED),
         ).arrange(DOWN, buff=0.20).move_to(ORIGIN)
         for line in final:
             line.scale_to_fit_width(min(line.width, 12.15))
         self.play(quiet_fade(final[0]), run_time=0.6)
-        self.slide_pause(nav_progress, 5.35)
+        self.slide_pause(nav_progress, 6.35)
         self.play(quiet_fade(final[1]), run_time=0.6)
-        self.slide_pause(nav_progress, 5.65)
-        self.play(quiet_fade(final[2]), run_time=0.6)
-        self.slide_pause(nav_progress, 6.0)
+        self.slide_pause(nav_progress, 7.0)

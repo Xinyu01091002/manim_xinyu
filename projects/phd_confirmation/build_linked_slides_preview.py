@@ -11,10 +11,10 @@ DECKS = [
     "S2ExactInteractionsSlides",
     "S3VWAStructureSlides",
     "S4HigherOrderVWASlides",
+    "S5SurfaceKinematicsSlides",
 ]
 
 COVER_VIDEO = "media/videos/scenario_cover_eye_attractor/1080p60/VWAExtensionsCover.mp4"
-S5_LOOP = "media/videos/scenario5_surface_kinematics/1080p30/SurfaceKinematicsVWA.mp4"
 OUTPUT = "phd_confirmation_slides_linked_preview.html"
 
 
@@ -28,7 +28,6 @@ def load_slide_sources(root: Path) -> list[tuple[str, str, bool]]:
         data = json.loads((root / "slides" / f"{deck}.json").read_text(encoding="utf-8"))
         for index, slide in enumerate(data["slides"], start=1):
             sources.append((f"{deck} / {index}", normalize_path(slide["file"]), False))
-    sources.append(("S5SurfaceKinematicsLoop", S5_LOOP, True))
     return sources
 
 

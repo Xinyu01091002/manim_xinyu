@@ -24,7 +24,7 @@ NAV_SCENARIO_NAMES = [
     "exact cost",
     "VWA structure",
     "higher order",
-    "extensions",
+    "extensions of VWA",
 ]
 NAV_FONT = "CMU Serif"
 NAV_SUB_GRADIENT_STARTS = [
@@ -89,6 +89,9 @@ def bottom_progress_nav(
     subscenario_names,
     progress_tracker,
     accent=YELLOW,
+    detail_label_color=WHITE,
+    detail_font_size=15,
+    detail_label_stroke=False,
 ):
     """Two-tier persistent progress bar: whole talk and current scenario."""
     frame_w = config.frame_width
@@ -167,6 +170,9 @@ def bottom_progress_nav(
         active_label=None,
         width_weights=None,
         show_inactive_labels=True,
+        active_text_color=None,
+        active_font_size=None,
+        active_label_stroke=True,
     ):
         count = len(names)
         weights = width_weights if width_weights else [1.0] * count
@@ -216,21 +222,31 @@ def bottom_progress_nav(
             )
             row.add(fill)
 
-            label_text = active_label if i == active_index and active_label else name
+            is_active = i == active_index
+            label_text = active_label if is_active and active_label else name
             current_only = not show_inactive_labels
-            font_size = 13 if current_only else 14 if i == active_index else 11
+            font_size = (
+                active_font_size
+                if (is_active or current_only) and active_font_size
+                else 14 if current_only else 15 if is_active else 12
+            )
+            text_color = (
+                active_text_color
+                if (is_active or current_only) and active_text_color is not None
+                else label_color(color) if current_only or is_active else NAV_TEXT
+            )
             label = Text(
                 label_text,
                 font=NAV_FONT,
                 font_size=font_size,
-                color=label_color(color) if current_only or i == active_index else NAV_TEXT,
-                weight=BOLD if current_only or i == active_index else NORMAL,
+                color=text_color,
+                weight=BOLD if current_only or is_active else NORMAL,
             )
             label.scale_to_fit_width(min(label.width, seg_w - 0.12))
             label.move_to(base)
-            if current_only or i == active_index:
+            if (current_only or is_active) and active_label_stroke:
                 label.set_stroke(NAV_BG if label_color(color) == NAV_TEXT else WHITE, width=0.6, opacity=0.75)
-            label.set_opacity(1.0 if i == active_index or show_inactive_labels else 0.0)
+            label.set_opacity(1.0 if is_active or show_inactive_labels else 0.0)
             label.add_updater(
                 lambda mob, idx=i, count=count, show=show_inactive_labels: update_label(
                     mob, progress_func(), idx, count, show
@@ -257,7 +273,7 @@ def bottom_progress_nav(
         else scenario_name
     )
     overall_weights = [1.0] * total_scenarios
-    overall_weights[scenario_index] = 3.2
+    overall_weights[scenario_index] = 4.15
     overall = segmented_row(
         overall_names,
         scenario_index,
@@ -266,6 +282,9 @@ def bottom_progress_nav(
         palette=NAV_SCENARIO_COLORS,
         active_label=f"S{scenario_index}: {active_scenario_name}",
         width_weights=overall_weights,
+        active_text_color=WHITE,
+        active_font_size=15,
+        active_label_stroke=False,
     )
     detail = segmented_row(
         subscenario_names,
@@ -275,6 +294,9 @@ def bottom_progress_nav(
         palette=sub_palette,
         active_label=subscenario_names[min(int(detail_progress()), len(subscenario_names) - 1)],
         show_inactive_labels=False,
+        active_text_color=detail_label_color,
+        active_font_size=detail_font_size,
+        active_label_stroke=detail_label_stroke,
     )
 
     nav = VGroup(bg, top_rule, overall, detail)
