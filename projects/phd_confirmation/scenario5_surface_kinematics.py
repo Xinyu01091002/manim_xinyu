@@ -8,6 +8,7 @@ series, and the inverse Creamer problem.
 """
 
 from manim import *
+from pathlib import Path
 from presentation_nav import bottom_progress_nav
 
 C_DIRECTIONAL = GREEN_B
@@ -22,6 +23,7 @@ C_MUTED = GREY_B
 C_PANEL = GREY_D
 C_INVERSE = PURPLE_B
 SCENARIO5_SECONDS = 30.0
+S5_DIRECTIONAL_FRAME_DIR = Path(__file__).resolve().parent / "data" / "cover_directional_frames"
 SCENARIO5_SUBSCENARIOS = [
     "directional",
     "kinematics",
@@ -115,7 +117,7 @@ class SurfaceKinematicsVWA(Scene):
         ]
 
         columns = VGroup()
-        visuals = VGroup()
+        visuals = Group()
         for center, (heading, color) in zip(centers, headings):
             box = frame_box(center, 2.82, 3.16, color)
             label = Text(heading, font_size=28, color=color, weight=BOLD).move_to(center + UP * 1.28)
@@ -138,71 +140,24 @@ class SurfaceKinematicsVWA(Scene):
         nav_progress.clear_updaters()
 
     def directional_wave_group(self, center, phase):
-        group = VGroup()
-        surf_center = center + UP * 0.03
-        theta = 55 * DEGREES
-        kx = np.cos(theta)
-        ky = np.sin(theta)
-        travel_dir = np.array([kx, ky, 0.0])
-        crest_dir = np.array([-ky, kx, 0.0])
+        group = Group()
+        frame_paths = sorted(S5_DIRECTIONAL_FRAME_DIR.glob("directional_*.png"))
+        if frame_paths:
+            frame_index = int((phase % TAU) / TAU * len(frame_paths)) % len(frame_paths)
+            image = ImageMobject(str(frame_paths[frame_index]))
+            image.set_width(2.64)
+            image.move_to(center + UP * 0.04)
+            group.add(image)
+        else:
+            group.add(Text("directional loop missing", font_size=18, color=C_DIRECTIONAL).move_to(center))
 
-        def project(x, y, z):
-            return surf_center + RIGHT * (0.88 * x + 0.44 * y) + UP * (0.34 * y + 0.92 * z)
-
-        envelope_points = []
-        for angle in np.linspace(0, TAU, 96):
-            local = travel_dir * (1.12 * np.cos(angle)) + crest_dir * (0.68 * np.sin(angle))
-            envelope_points.append(project(local[0], local[1], 0.0))
-        envelope_outline = VMobject(color=C_DIRECTIONAL, stroke_width=1.8).set_points_smoothly(envelope_points)
-        envelope_outline.set_opacity(0.38)
-        group.add(envelope_outline)
-
-        q_samples = np.linspace(-1.18, 1.18, 78)
-        r_samples = np.linspace(-0.58, 0.58, 7)
-        for r in r_samples:
-            points = []
-            base_points = []
-            transverse_weight = np.exp(-2.15 * r * r)
-            for q in q_samples:
-                envelope = np.exp(-1.18 * q * q - 2.15 * r * r)
-                carrier = np.sin(17.0 * q - phase)
-                z = 0.30 * envelope * carrier
-                local = travel_dir * q + crest_dir * r
-                points.append(project(local[0], local[1], z))
-                base_points.append(project(local[0], local[1], 0.0))
-            base = VMobject(color=C_MUTED, stroke_width=0.8).set_points_smoothly(base_points).set_opacity(0.14)
-            wave = VMobject(
-                color=interpolate_color(C_DIRECTIONAL, WHITE, 0.18 * transverse_weight),
-                stroke_width=1.5 + 1.9 * transverse_weight,
-            ).set_points_smoothly(points).set_opacity(0.46 + 0.34 * transverse_weight)
-            group.add(base, wave)
-
-        wavelength = TAU / 17.0
-        crest_phase = (phase % TAU) / 17.0
-        for q0 in np.arange(-0.95, 1.05, wavelength):
-            q = ((q0 + crest_phase + 1.05) % 2.10) - 1.05
-            points = []
-            for r in np.linspace(-0.56, 0.56, 24):
-                envelope = np.exp(-1.18 * q * q - 2.15 * r * r)
-                if envelope < 0.22:
-                    continue
-                local = travel_dir * q + crest_dir * r
-                points.append(project(local[0], local[1], 0.03 + 0.22 * envelope))
-            if len(points) >= 3:
-                group.add(VMobject(color=WHITE, stroke_width=1.5).set_points_smoothly(points).set_opacity(0.34))
-
-        arrow = Arrow(project(-0.76, -0.47, 0.22), project(0.66, 0.50, 0.31), buff=0, color=C_DIRECTIONAL, stroke_width=5.0)
-        travel_badge = semantic_badge(center + DOWN * 0.97, 1.92, 0.50, C_DIRECTIONAL, fill_opacity=0.06, stroke_opacity=0.55)
+        travel_badge = semantic_badge(center + DOWN * 1.08, 1.92, 0.50, C_DIRECTIONAL, fill_opacity=0.06, stroke_opacity=0.55)
         label = VGroup(
             MathTex(r"k", font_size=24, color=C_LINEAR),
             Arrow(LEFT * 0.26, RIGHT * 0.26, buff=0, color=C_DIRECTIONAL, stroke_width=3.0, max_tip_length_to_length_ratio=0.28),
             MathTex(r"\boldsymbol{\kappa}", font_size=24, color=C_DIRECTIONAL),
         ).arrange(RIGHT, buff=0.08).move_to(travel_badge.get_center())
-        xy = VGroup(
-            MathTex("x", font_size=18, color=C_MUTED).move_to(project(1.13, -0.70, 0)),
-            MathTex("y", font_size=18, color=C_MUTED).move_to(project(-1.03, 0.80, 0)),
-        )
-        group.add(arrow, xy, travel_badge, label)
+        group.add(travel_badge, label)
         return group
 
     def kinematics_visual(self, center, phase):
@@ -233,20 +188,20 @@ class SurfaceKinematicsVWA(Scene):
 
     def time_series_visual(self, center, phase):
         group = VGroup()
-        linear_center = center + UP * 0.47
-        nonlinear_center = center + DOWN * 0.34
-        group.add(axes_at(linear_center, width=2.40, height=0.74, x_label="t", y_label="", font_size=15))
-        group.add(axes_at(nonlinear_center, width=2.40, height=0.74, x_label="t", y_label="", font_size=15))
+        linear_center = center + UP * 0.54
+        nonlinear_center = center + DOWN * 0.30
+        group.add(axes_at(linear_center, width=2.56, height=0.64, x_label="t", y_label="", font_size=14))
+        group.add(axes_at(nonlinear_center, width=2.56, height=0.64, x_label="t", y_label="", font_size=14))
         fixed_phase = 0.35
-        linear = wave_group_curve(linear_center, 2.38, 10.0, 0.18, fixed_phase, C_LINEAR, stroke_width=3.3, envelope=1.38)
+        linear = wave_group_curve(linear_center, 2.52, 10.0, 0.17, fixed_phase, C_LINEAR, stroke_width=3.3, envelope=1.30)
         nonlinear = FunctionGraph(
             lambda x: 0.18 * np.exp(-1.38 * x * x) * np.sin(10.0 * x + fixed_phase)
             + 0.060 * np.exp(-1.58 * x * x) * np.sin(20.0 * x + 2 * fixed_phase + 0.45),
-            x_range=[-1.19, 1.19],
+            x_range=[-1.26, 1.26],
             color=C_ELEVATION,
             stroke_width=3.3,
         ).move_to(nonlinear_center)
-        cursor_x = -1.12 + (phase % TAU) / TAU * 2.24
+        cursor_x = -1.20 + (phase % TAU) / TAU * 2.40
         y_lin = 0.18 * np.exp(-1.38 * cursor_x * cursor_x) * np.sin(10.0 * cursor_x + fixed_phase)
         y_nl = y_lin + 0.060 * np.exp(-1.58 * cursor_x * cursor_x) * np.sin(20.0 * cursor_x + 2 * fixed_phase + 0.45)
         probe = VGroup(
@@ -260,12 +215,12 @@ class SurfaceKinematicsVWA(Scene):
             stroke_width=1.8,
             dash_length=0.05,
         ).set_opacity(0.72)
-        arrow = Arrow(linear_center + DOWN * 0.28, nonlinear_center + UP * 0.28, buff=0.05, color=C_TIME, stroke_width=2.2)
+        arrow = Arrow(linear_center + DOWN * 0.24, nonlinear_center + UP * 0.24, buff=0.05, color=C_TIME, stroke_width=2.2)
         cursor_lin = DashedLine(linear_center + RIGHT * cursor_x + DOWN * 0.33, linear_center + RIGHT * cursor_x + UP * y_lin, color=WHITE, stroke_width=1.7, dash_length=0.04)
         cursor_nl = DashedLine(nonlinear_center + RIGHT * cursor_x + DOWN * 0.33, nonlinear_center + RIGHT * cursor_x + UP * y_nl, color=WHITE, stroke_width=1.7, dash_length=0.04)
         labels = VGroup(
-            Text("linear input", font_size=15, color=C_LINEAR).move_to(linear_center + RIGHT * 0.48 + UP * 0.40),
-            Text("nonlinear output", font_size=14, color=C_ELEVATION).move_to(nonlinear_center + RIGHT * 0.36 + UP * 0.40),
+            Text("linear input", font_size=15, color=C_LINEAR).move_to(linear_center + LEFT * 0.56 + UP * 0.35),
+            Text("nonlinear output", font_size=14, color=C_ELEVATION).move_to(nonlinear_center + LEFT * 0.42 + UP * 0.35),
         )
         relation = VGroup(
             Text("linear", font_size=15, color=C_LINEAR, weight=BOLD),
@@ -273,7 +228,7 @@ class SurfaceKinematicsVWA(Scene):
             Text("nonlinear", font_size=15, color=C_ELEVATION, weight=BOLD),
         ).arrange(RIGHT, buff=0.08)
         note = Text("add bound harmonics", font_size=10, color=C_MUTED)
-        relation_group = VGroup(relation, note).arrange(DOWN, buff=0.03).move_to(center + DOWN * 1.01)
+        relation_group = VGroup(relation, note).arrange(DOWN, buff=0.03).move_to(center + DOWN * 1.20)
         relation_badge = semantic_badge(relation_group.get_center(), 2.00, 0.54, C_TIME)
         group.add(
             linear,
@@ -293,24 +248,24 @@ class SurfaceKinematicsVWA(Scene):
 
     def inverse_creamer_visual(self, center, phase):
         group = VGroup()
-        nonlinear_center = center + UP * 0.47
-        linear_center = center + DOWN * 0.35
-        group.add(axes_at(nonlinear_center, width=2.40, height=0.74, x_label="x", y_label="", font_size=15))
-        group.add(axes_at(linear_center, width=2.40, height=0.74, x_label="x", y_label="", font_size=15))
+        nonlinear_center = center + UP * 0.54
+        linear_center = center + DOWN * 0.31
+        group.add(axes_at(nonlinear_center, width=2.56, height=0.64, x_label="x", y_label="", font_size=14))
+        group.add(axes_at(linear_center, width=2.56, height=0.64, x_label="x", y_label="", font_size=14))
 
         fixed_phase = 0.25
         nonlinear = FunctionGraph(
             lambda x: 0.18 * np.exp(-1.38 * x * x) * np.sin(10.0 * x + fixed_phase)
             + 0.060 * np.exp(-1.58 * x * x) * np.sin(20.0 * x + 2 * fixed_phase + 0.3),
-            x_range=[-1.19, 1.19],
+            x_range=[-1.26, 1.26],
             color=C_ELEVATION,
             stroke_width=3.8,
         ).move_to(nonlinear_center)
-        linear = wave_group_curve(linear_center, 2.38, 10.0, 0.18, fixed_phase, C_LINEAR, stroke_width=3.8, envelope=1.38)
-        arrow = Arrow(nonlinear_center + DOWN * 0.30, linear_center + UP * 0.30, buff=0.05, color=C_INVERSE, stroke_width=3.0, max_tip_length_to_length_ratio=0.24)
+        linear = wave_group_curve(linear_center, 2.52, 10.0, 0.17, fixed_phase, C_LINEAR, stroke_width=3.8, envelope=1.30)
+        arrow = Arrow(nonlinear_center + DOWN * 0.24, linear_center + UP * 0.24, buff=0.05, color=C_INVERSE, stroke_width=3.0, max_tip_length_to_length_ratio=0.24)
         labels = VGroup(
-            Text("nonlinear input", font_size=14, color=C_ELEVATION).move_to(nonlinear_center + LEFT * 0.38 + UP * 0.40),
-            Text("linear modes", font_size=14, color=C_LINEAR).move_to(linear_center + LEFT * 0.50 + UP * 0.40),
+            Text("nonlinear input", font_size=14, color=C_ELEVATION).move_to(nonlinear_center + LEFT * 0.46 + UP * 0.35),
+            Text("linear modes", font_size=14, color=C_LINEAR).move_to(linear_center + LEFT * 0.56 + UP * 0.35),
         )
         relation = VGroup(
             Text("nonlinear", font_size=15, color=C_ELEVATION, weight=BOLD),
@@ -318,7 +273,7 @@ class SurfaceKinematicsVWA(Scene):
             Text("linear modes", font_size=15, color=C_LINEAR, weight=BOLD),
         ).arrange(RIGHT, buff=0.08)
         note = Text("recover linear modes", font_size=10, color=C_MUTED)
-        relation_group = VGroup(relation, note).arrange(DOWN, buff=0.03).move_to(center + DOWN * 1.01)
+        relation_group = VGroup(relation, note).arrange(DOWN, buff=0.03).move_to(center + DOWN * 1.20)
         relation_badge = semantic_badge(relation_group.get_center(), 2.14, 0.54, C_INVERSE, fill_opacity=0.06, stroke_opacity=0.65)
         group.add(nonlinear, linear, arrow, labels, relation_badge, relation_group)
         return group

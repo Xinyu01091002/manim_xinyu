@@ -25,9 +25,9 @@ def normalize_path(path: str) -> str:
 def load_slide_sources(root: Path) -> list[tuple[str, str, bool]]:
     sources: list[tuple[str, str, bool]] = [("Cover", COVER_VIDEO, True)]
     for deck in DECKS:
-        data = json.loads((root / "slides" / f"{deck}.json").read_text(encoding="utf-8"))
+        data = json.loads((root / "slides" / f"{deck}.json").read_text(encoding="utf-8-sig"))
         for index, slide in enumerate(data["slides"], start=1):
-            sources.append((f"{deck} / {index}", normalize_path(slide["file"]), False))
+            sources.append((f"{deck} / {index}", normalize_path(slide["file"]), bool(slide.get("loop", False))))
     return sources
 
 

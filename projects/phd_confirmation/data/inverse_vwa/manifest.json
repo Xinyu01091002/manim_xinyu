@@ -1,0 +1,33 @@
+{
+  "description": "Inverse VWA Manim demo export",
+  "files": [
+    "waveforms.csv",
+    "spectra.csv",
+    "residual_history.csv",
+    "inverse_vwa_manim_demo.mat",
+    "manifest.json"
+  ],
+  "columns": {
+    "waveforms": [
+      "x",
+      "x_over_lambda",
+      "eta_nonlinear",
+      "eta11_four_phase",
+      "iteration_000..."
+    ],
+    "spectra": [
+      "k",
+      "k_over_kp",
+      "amp_eta_nonlinear",
+      "amp_eta11_four_phase",
+      "amp_eta22_four_phase",
+      "amp_eta33_four_phase",
+      "amp_eta_est_iteration_000..."
+    ]
+  },
+  "n_eta_est_frames": 61,
+  "iteration_000_note": "Initial band-pass estimate before residual updates.",
+  "kp": 0.028642146586804838,
+  "lambda": 219.3685200282506,
+  "residual_history": "One residual value per inverse-loop update attempt; stage 1 uses nList=[2], stage 2 uses nList=[2 3]."
+}

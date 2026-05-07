@@ -170,9 +170,6 @@ Current local slide-deck status:
 
 Current slide files:
 
-- `slides_demo.py`: small mechanism proof of concept. It tests Manim Slides
-  rendering, `next_slide()` pauses, and browser export. It is not a content
-  template for the real talk.
 - `slides_s0_why_nonlinear.py`: faithful S0 conversion derived directly from
   `scenario0_why_nonlinear.py`. It keeps the original wave panels, nonlinear
   overlay, crest lift, spectrum fingerprint, fixed-gauge time trace, arrival
@@ -203,29 +200,6 @@ Recommended conversion pattern for S1-S5:
    summary cards unless the source video already used that visual language.
 5. Drive the bottom navigation progress explicitly at slide pauses; do not use
    calibrated elapsed-time updaters in presenter-controlled slides.
-
-Render the demo slide deck:
-
-```powershell
-$env:PATH = "C:\texlive\2023\bin\windows;$env:PATH"
-$env:IMAGEIO_FFMPEG_EXE = "C:\Users\spet5947\AppData\Local\anaconda3\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
-$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
-& $slides render --CE --quality h slides_demo.py PhDConfirmationSlidesDemo
-```
-
-Present it:
-
-```powershell
-$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
-& $slides present PhDConfirmationSlidesDemo
-```
-
-If the native presenter has Qt issues, export a browser deck instead:
-
-```powershell
-$slides = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim-slides.exe"
-& $slides convert --to html --one-file --offline PhDConfirmationSlidesDemo slides_demo_1080p_offline.html
-```
 
 Render the faithful S0 slide deck:
 
@@ -270,8 +244,8 @@ Recommended source-control shape:
 
 - Keep the existing `scenario0_*.py` through `scenario5_*.py` files as the
   canonical video export path.
-- Keep slide-specific entry points separate, either as `slides_demo.py` while
-  prototyping or as `slides_s0_*.py` / `slides_deck.py` if the experiment grows.
+- Keep slide-specific entry points separate as `slides_s0_*.py` through
+  `slides_s5_*.py`.
 - Share helper functions, colors, and visual builders where useful, but keep
   pacing separate: video scenes should remain duration-driven, while slide scenes
   should be presenter-step-driven.

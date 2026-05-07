@@ -985,22 +985,58 @@ class S3VWAStructureSlides(Slide):
             fill_opacity=0.0,
         ).move_to(sample_cell)
 
-        avg_rule = VGroup(
-            Text("VWA reuses a one-dimensional self kernel", font_size=22, color=C_MUTED),
-            MathTex(r"G_2(k_n)=G(k_n,k_n)", font_size=31, color=C_WEIGHT),
-            MathTex(r"G_2(k_m)=G(k_m,k_m)", font_size=31, color=C_WEIGHT),
-            MathTex(
-                r"G_2(k)={k(3-\tanh^2kh)\over4\tanh^3kh}",
-                font_size=28,
-                color=C_VWA,
-            ),
-        ).arrange(DOWN, buff=0.10, aligned_edge=LEFT).to_edge(RIGHT, buff=0.50).shift(UP * 0.12)
-        avg_group = VGroup(avg_rule)
-        avg_rule_box = SurroundingRectangle(avg_group, color=C_WEIGHT, buff=0.16, corner_radius=0.08).set_fill(BLACK, opacity=0.08)
+        exact_kernel_title = Text("MF12/Fuhrman exact elevation kernel", font_size=20, color=C_MUTED)
+        exact_kernel_line_1 = MathTex(
+            r"G(k_m,k_n)=",
+            r"{\omega_m^2+\omega_n^2\over 2g}",
+            r"-{\omega_m\omega_n\over 2g}\left(1-{1\over T_mT_n}\right)",
+            r"{\Omega^2+gK\tanh(Kh)\over D_p}",
+            font_size=17,
+        )
+        exact_kernel_line_2 = MathTex(
+            r"-{\Omega\over 2gD_p}\left({\omega_m^3\over S_m^2}+{\omega_n^3\over S_n^2}\right)",
+            font_size=17,
+        )
+        for mob in [exact_kernel_line_1, exact_kernel_line_2]:
+            mob.set_color(C_EXACT)
+        exact_kernel_defs = MathTex(
+            r"\Omega=\omega_m+\omega_n,\quad K=k_m+k_n,\quad D_p=\Omega^2-gK\tanh(Kh)",
+            font_size=15,
+            color=C_MUTED,
+        )
+        exact_kernel_terms = MathTex(
+            r"T_j=\tanh(k_jh),\quad S_j=\sinh(k_jh)",
+            font_size=15,
+            color=C_MUTED,
+        )
+        self_kernel_title = Text("self-interaction kernel used by VWA", font_size=20, color=C_MUTED)
+        self_kernel_formula = MathTex(
+            r"G_2(k)=G(k,k)",
+            r"={k\over 4\tanh(kh)}\left(2+{3\over\sinh^2(kh)}\right)",
+            r"={k(3-\tanh^2(kh))\over4\tanh^3(kh)}",
+            font_size=19,
+        )
+        self_kernel_formula[0].set_color(C_WEIGHT)
+        self_kernel_formula[1].set_color(C_VWA)
+        self_kernel_formula[2].set_color(C_VWA)
+        kernel_panel_contents = VGroup(
+            exact_kernel_title,
+            exact_kernel_line_1,
+            exact_kernel_line_2,
+            exact_kernel_defs,
+            exact_kernel_terms,
+            self_kernel_title,
+            self_kernel_formula,
+        ).arrange(DOWN, buff=0.06, aligned_edge=LEFT)
+        kernel_panel_contents.scale_to_fit_width(5.95)
+        kernel_panel_contents.to_edge(RIGHT, buff=0.45).shift(UP * 0.08)
+        kernel_panel_box = SurroundingRectangle(kernel_panel_contents, color=C_WEIGHT, buff=0.14, corner_radius=0.08)
+        kernel_panel_box.set_fill(BLACK, opacity=0.08)
+        avg_group = VGroup(kernel_panel_contents)
         pair_est_label = Text("off-diagonal pair", font_size=19, color=WHITE).next_to(pair_ring, DOWN, buff=0.08)
-        diag_n_arrow = Arrow(diag_n.get_right(), avg_rule[1].get_left(), buff=0.06, color=C_WEIGHT, stroke_width=2.0, max_tip_length_to_length_ratio=0.08)
-        diag_m_arrow = Arrow(diag_m.get_right(), avg_rule[2].get_left(), buff=0.06, color=C_WEIGHT, stroke_width=2.0, max_tip_length_to_length_ratio=0.08)
-        avg_arrow = Arrow(avg_rule[3].get_left(), pair_ring.get_right(), buff=0.06, color=C_VWA, stroke_width=2.4, max_tip_length_to_length_ratio=0.08)
+        exact_arrow = Arrow(pair_ring.get_right(), exact_kernel_line_1.get_left(), buff=0.08, color=C_EXACT, stroke_width=2.2, max_tip_length_to_length_ratio=0.08)
+        diag_n_arrow = Arrow(diag_n.get_right(), self_kernel_formula.get_left() + UP * 0.03, buff=0.08, color=C_WEIGHT, stroke_width=2.2, max_tip_length_to_length_ratio=0.08)
+        diag_m_arrow = Arrow(diag_m.get_right(), self_kernel_formula.get_left() + DOWN * 0.10, buff=0.08, color=C_WEIGHT, stroke_width=2.2, max_tip_length_to_length_ratio=0.08)
 
         diag_head = Text("two-index to one-index", font_size=24, color=C_VWA).next_to(exact_grid, UP, buff=0.20)
         self.play(
@@ -1016,12 +1052,12 @@ class S3VWAStructureSlides(Slide):
             FadeIn(diag_n),
             ReplacementTransform(sample_dot, pair_dot),
             Create(pair_ring),
-            FadeIn(avg_rule_box),
+            FadeIn(kernel_panel_box),
             quiet_fade(avg_group),
             run_time=1.8,
         )
-        self.play(Create(diag_m_arrow), Create(diag_n_arrow), run_time=0.9)
-        self.play(FadeIn(avg_overlay), Create(avg_arrow), quiet_fade(pair_est_label), run_time=1.0)
+        self.play(Create(exact_arrow), Create(diag_m_arrow), Create(diag_n_arrow), run_time=0.9)
+        self.play(FadeIn(avg_overlay), quiet_fade(pair_est_label), run_time=0.8)
         self.slide_pause(nav_progress, 4.45)
 
         self.play(
@@ -1036,11 +1072,11 @@ class S3VWAStructureSlides(Slide):
                 pair_dot,
                 pair_ring,
                 avg_group,
-                avg_rule_box,
+                kernel_panel_box,
                 avg_overlay,
+                exact_arrow,
                 diag_m_arrow,
                 diag_n_arrow,
-                avg_arrow,
                 pair_est_label,
                 vwa_head,
                 title,

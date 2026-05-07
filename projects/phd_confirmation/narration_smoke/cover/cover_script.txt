@@ -1,0 +1,2 @@
+This is the opening slide for my PhD confirmation presentation.
+The talk is about fast nonlinear wave-group modelling, using the variable-wavenumber approximation to keep the physics visible while making higher-order calculations practical.

@@ -11,6 +11,14 @@ projects/phd_confirmation/slides_demo.html
 projects/phd_confirmation/phd_confirmation_slides_*.html
 projects/phd_confirmation/nav_*_preview.html
 projects/phd_confirmation/projects/
+projects/phd_confirmation/narration_smoke/**/models/
+projects/phd_confirmation/narration_smoke/**/*.wav
+projects/phd_confirmation/narration/audio/
+projects/phd_confirmation/narration/models/
+projects/phd_confirmation/narration/rendered/
+projects/phd_confirmation/narration/video_work/
+projects/phd_confirmation/narration/frame_check*/
+projects/phd_confirmation/phd_confirmation_slides_narrated_preview.html
 
 # Python
 __pycache__/
@@ -28,3 +36,14 @@ Tex/
 .DS_Store
 Thumbs.db
 /.omx/*
+
+# file types
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.mp4
+*.avi
+*.mov
+*.mkv
