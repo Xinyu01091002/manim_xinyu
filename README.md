@@ -1,12 +1,21 @@
-# manim
+# Manim Research Animations
 
-Personal collection of Manim animation scripts.
+Personal collection of Manim animation scripts for research presentations,
+derivation-heavy explainers, and visual experiments.
 
 ## Structure
 
 - `projects/` - individual animation projects
 - `skills/` - Manim best practice guides for AI coding assistants, sourced from
   [adithya-s-k/manim_skill](https://github.com/adithya-s-k/manim_skill)
+
+Current active projects:
+
+- `projects/phd_confirmation/` - PhD confirmation presentation, including
+  calibrated scenario videos, Manim Slides conversions, navigation tooling, and
+  narration/export helpers.
+- `projects/creamer_transform/` - staged visualization of the Creamer transform
+  and its 1D deep-water remapping interpretation.
 
 Important project conventions:
 
@@ -17,6 +26,9 @@ Important project conventions:
   rewrites of the talk.
 - Generated Manim outputs (`media/`, `slides/`, and exported offline HTML decks)
   are ignored; commit source files and regenerate outputs locally.
+- Experimental subprojects should stay self-contained under `projects/<name>/`
+  and should include their own README or outline before large implementation
+  work.
 
 ## Running a project
 
@@ -110,15 +122,16 @@ $manim = "C:\Users\spet5947\AppData\Local\anaconda3\Scripts\manim"
 & $env:IMAGEIO_FFMPEG_EXE -y -f concat -safe 0 -i concat_high_quality.txt -c copy media/videos/phd_confirmation_full_1080p60.mp4
 ```
 
-The PhD confirmation folder also has an early Manim Slides workflow:
+The PhD confirmation folder also has a Manim Slides workflow:
 
-- `slides_demo.py` is a small technical proof of concept for slide rendering.
 - `slides_s0_*.py` through `slides_s5_*.py` are the current
   presenter-controlled slide conversions of the corresponding video scenarios.
 - `build_linked_slides_preview.py` builds the local browser preview that links
   the looping cover and the generated S0-S5 slide clips.
 - `build_s0_nav_slides_preview.py` is a small local QA helper for testing bottom
   navigation changes against S0 before rerendering the full deck.
+- Narration helpers live in the same project folder and generate local audio,
+  subtitle, and narrated-preview artifacts.
 - Future slide conversions should follow the source video scene closely and
   convert major explanatory waits into `next_slide()` pauses.
 - Result figures and CSV inputs needed by the slide scenes live under
