@@ -26,6 +26,12 @@ Important project conventions:
   rewrites of the talk.
 - Generated Manim outputs (`media/`, `slides/`, and exported offline HTML decks)
   are ignored; commit source files and regenerate outputs locally.
+- For iterative Manim Slides renders, use
+  `python tools/manim_slides_clean_render.py <file.py> <SceneName> -q l`; see
+  [docs/manim_slides_workflow.md](docs/manim_slides_workflow.md).
+- Repo-local Codex skills are tracked under `.agents/skills/` and include the
+  ManimCE, ManimGL, composer, HTML deck, and clean-render workflows used by
+  default in this repository.
 - Experimental subprojects should stay self-contained under `projects/<name>/`
   and should include their own README or outline before large implementation
   work.

@@ -16,6 +16,20 @@ Use a restrained presentation style for all Manim animation work in this repo.
 - For recurring UI elements such as navigation bars, create stable objects once and update
   only small state changes; avoid per-frame reconstruction of text.
 
+## Manim Slides workflow
+
+- When modifying Manim Slides scenes, prefer `tools/manim_slides_clean_render.py`
+  over raw `manim-slides render`.
+- Default iterative command: `python tools/manim_slides_clean_render.py <file.py> <SceneName> -q l`.
+- Keep development render outputs in `.manim_media/`.
+- Clean only scene-specific generated assets unless the user explicitly asks for broader cleanup.
+- Use `--dry-run` before broad or unusual cleanup.
+- Never delete generated assets outside the repository root unless the user explicitly provides
+  `--allow-outside-project`.
+- Use `--flush-cache` during iterative work. Use `--disable-caching` only when stale Manim cache
+  behavior is suspected.
+- Do not commit generated media, slide files, or converted assets.
+
 ## PhD Confirmation Navigation Bar
 
 For `projects/phd_confirmation/`, use the persistent two-tier navigation bar in

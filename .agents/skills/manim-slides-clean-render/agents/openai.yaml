@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manim Slides Clean Render"
+  short_description: "Clean stale Manim Slides artifacts before rendering."
+  default_prompt: "Use the repository clean-render workflow for a Manim Slides scene."
