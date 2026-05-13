@@ -24,6 +24,9 @@ projects/phd_confirmation/narration/frame_check*/
 projects/phd_confirmation/phd_confirmation_slides_narrated_preview.html
 projects/bound_wave_tutorial/*.html
 projects/bound_wave_tutorial/*_assets/
+projects/bound_wave_tutorial/narration/audio/
+projects/bound_wave_tutorial/narration/rendered/
+projects/bound_wave_tutorial/narration/video_work/
 
 # Python
 __pycache__/
