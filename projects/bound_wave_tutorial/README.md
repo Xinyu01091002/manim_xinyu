@@ -49,10 +49,15 @@ tutorial unless the scope changes later.
 - `scenes.md` - current scenario map for the Manim Slides deck.
 - `slides_bound_wave_intro.py` - presenter-controlled Manim Slides source.
 - `narration/draft_page_scripts.md` - page-matched narration text.
+- `narration/alignment_map.json` - visual-slide to narration/audio remapping
+  used by the preview, video, subtitle, and diagnostic helpers.
 - `build_narrated_slides_preview.py` - local narrated browser preview builder.
 - `generate_narration_audio.py` - Kokoro ONNX page-audio generator.
 - `render_narrated_video.py` - FFmpeg assembler for the narrated MP4.
 - `export_narrated_subtitles.py` - subtitle export for the narrated MP4.
+- `diagnose_narration_alignment.py` - CSV/HTML audit helper for remapping.
+- `verify_narration_alignment.py` - consistency check for the current narrated
+  HTML, subtitles, render inputs, and MP4 artifacts.
 - `notes/governing_equations.md` - physical problem and boundary conditions.
 - `notes/perturbation_expansion.md` - small-parameter and linearization logic.
 - `notes/stokes_wave.md` - monochromatic Stokes wave and bound harmonic.
@@ -91,8 +96,9 @@ the durable record; regenerate media locally.
 
 Generated narration audio, rendered MP4s, QA frames, slide JSON, slide MP4s,
 HTML exports, and Manim cache folders are local review artifacts. They are
-intentionally ignored by Git. Keep the scripts and `narration/draft_page_scripts.md`
-as the reproducible source of the narrated version.
+intentionally ignored by Git. Keep the scripts, `narration/draft_page_scripts.md`,
+and `narration/alignment_map.json` as the reproducible source of the narrated
+version.
 
 ## Local Environment
 
@@ -167,6 +173,8 @@ The latest local review outputs are:
   `projects/bound_wave_tutorial/bound_wave_intro_narrated_preview.html`
 - Narrated MP4:
   `projects/bound_wave_tutorial/narration/rendered/bound_wave_intro_narrated.mp4`
+- Narrated MP4 with selectable embedded subtitles:
+  `projects/bound_wave_tutorial/narration/rendered/bound_wave_intro_narrated_with_subtitles.mp4`
 - Narrated subtitles:
   `projects/bound_wave_tutorial/narration/rendered/bound_wave_intro_narrated.srt`
   and
@@ -180,6 +188,16 @@ narration text changes.
 The narration workflow follows the `projects/phd_confirmation` pattern: render
 the Manim Slides deck, generate page-matched audio, then stitch each slide-step
 video with its corresponding narration.
+
+The current deck uses `narration/alignment_map.json` when pairing slide-step
+videos with narration pages. Update that map after inserting, deleting, or
+reordering slide pauses; otherwise the rendered audio can drift at scenario
+transitions.
+
+Consecutive visual steps that map to the same narration page are grouped into
+one narration run. The visuals still advance, but the WAV is played only once;
+this avoids repeated narration when several short reveals share the same spoken
+sentence.
 
 The Kokoro model files are reused from
 `projects/phd_confirmation/narration/models/` when local model files are not
@@ -197,8 +215,11 @@ Copy-Item -LiteralPath bound_wave_intro_nav_high.html -Destination bound_wave_in
 python generate_narration_audio.py --speed 1.05
 python build_narrated_slides_preview.py
 python render_narrated_video.py --pause 0.85 --audio-preroll 0.65 --fps 30
-python export_narrated_subtitles.py --pause 0.85 --audio-preroll 0.65
+python export_narrated_subtitles.py --pause 0.85 --audio-preroll 0.65 --mux-mp4
+python verify_narration_alignment.py --pause 0.85 --audio-preroll 0.65
 ```
 
 The `--audio-preroll 0.65` delay lets each slide reveal settle before narration
 starts, which keeps the spoken explanation closer to the completed visual state.
+The verifier checks structural consistency only; use the diagnostic contact
+sheets when changing the semantic slide-to-audio map.

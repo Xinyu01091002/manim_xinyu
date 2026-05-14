@@ -25,6 +25,7 @@ projects/phd_confirmation/phd_confirmation_slides_narrated_preview.html
 projects/bound_wave_tutorial/*.html
 projects/bound_wave_tutorial/*_assets/
 projects/bound_wave_tutorial/narration/audio/
+projects/bound_wave_tutorial/narration/alignment_diagnostics/
 projects/bound_wave_tutorial/narration/rendered/
 projects/bound_wave_tutorial/narration/video_work/
 

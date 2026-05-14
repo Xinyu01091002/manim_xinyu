@@ -10,6 +10,7 @@ from pathlib import Path
 DECKS = ["BoundWaveIntroSlides"]
 
 SCRIPT_PATH = "narration/draft_page_scripts.md"
+ALIGNMENT_MAP_PATH = "narration/alignment_map.json"
 OUTPUT = "bound_wave_intro_narrated_preview.html"
 PAGE_HEADING = re.compile(r"^(?:##|###) Page (?P<number>\d+) - (?P<title>.+)$")
 
@@ -19,7 +20,17 @@ class SlideSource:
     title: str
     video: str
     loop: bool
+    audio_index: int
     narration: str
+
+
+@dataclass(frozen=True)
+class NarrationRun:
+    start_index: int
+    end_index: int
+    audio_index: int
+    narration: str
+    slides: list[SlideSource]
 
 
 def normalize_path(path: str) -> str:
@@ -62,32 +73,74 @@ def parse_narration(path: Path) -> list[str]:
     return pages
 
 
+def load_alignment_map(root: Path, slide_count: int, narration_count: int) -> list[int]:
+    path = root / ALIGNMENT_MAP_PATH
+    if not path.exists():
+        if slide_count != narration_count:
+            raise ValueError(f"Slide/narration count mismatch: videos={slide_count} narration={narration_count}")
+        return list(range(slide_count))
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    mapping = data.get("audio_index_by_visual_index")
+    if not isinstance(mapping, list):
+        raise ValueError(f"{ALIGNMENT_MAP_PATH} must contain audio_index_by_visual_index")
+    if len(mapping) != slide_count:
+        raise ValueError(f"Alignment map length mismatch: map={len(mapping)} slides={slide_count}")
+    invalid = [value for value in mapping if not isinstance(value, int) or value < 0 or value >= narration_count]
+    if invalid:
+        raise ValueError(f"Alignment map contains invalid narration indices: {invalid[:5]}")
+    return mapping
+
+
 def combine_slides(root: Path) -> list[SlideSource]:
     videos = load_slide_sources(root)
     narration = parse_narration(root / SCRIPT_PATH)
-    if len(videos) != len(narration):
-        raise ValueError(f"Slide/narration count mismatch: videos={len(videos)} narration={len(narration)}")
+    mapping = load_alignment_map(root, len(videos), len(narration))
     return [
-        SlideSource(title=title, video=video, loop=loop, narration=text)
-        for (title, video, loop), text in zip(videos, narration)
+        SlideSource(title=title, video=video, loop=loop, audio_index=audio_index, narration=narration[audio_index])
+        for (title, video, loop), audio_index in zip(videos, mapping)
     ]
 
 
-def video_section(index: int, slide: SlideSource) -> str:
+def group_narration_runs(slides: list[SlideSource]) -> list[NarrationRun]:
+    if not slides:
+        return []
+    runs: list[NarrationRun] = []
+    start = 0
+    for index in range(1, len(slides) + 1):
+        if index == len(slides) or slides[index].audio_index != slides[start].audio_index:
+            run_slides = slides[start:index]
+            runs.append(
+                NarrationRun(
+                    start_index=start,
+                    end_index=index - 1,
+                    audio_index=slides[start].audio_index,
+                    narration=slides[start].narration,
+                    slides=run_slides,
+                )
+            )
+            start = index
+    return runs
+
+
+def video_section(index: int, slide: SlideSource, audio_run_start: bool) -> str:
     loop_attr = " loop" if slide.loop else ""
-    audio_src = f"narration/audio/{index:03d}.wav"
-    return f"""<section class="slide" data-index="{index}" data-title="{html.escape(slide.title)}" data-script="{html.escape(slide.narration)}">
+    audio_src = f"narration/audio/{slide.audio_index:03d}.wav"
+    audio_source = f'\n    <source src="{html.escape(audio_src)}" type="audio/wav" />' if audio_run_start else ""
+    return f"""<section class="slide" data-index="{index}" data-audio-index="{slide.audio_index}" data-audio-run-start="{str(audio_run_start).lower()}" data-title="{html.escape(slide.title)}" data-script="{html.escape(slide.narration)}">
   <video preload="metadata" playsinline muted{loop_attr}>
     <source src="{html.escape(slide.video)}" type="video/mp4" />
   </video>
-  <audio preload="metadata">
-    <source src="{html.escape(audio_src)}" type="audio/wav" />
+  <audio preload="metadata">{audio_source}
   </audio>
 </section>"""
 
 
 def build_html(slides: list[SlideSource]) -> str:
-    sections = "\n".join(video_section(index, slide) for index, slide in enumerate(slides))
+    sections = "\n".join(
+        video_section(index, slide, index == 0 or slide.audio_index != slides[index - 1].audio_index)
+        for index, slide in enumerate(slides)
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -142,7 +195,10 @@ def build_html(slides: list[SlideSource]) -> str:
 
     function updateHud() {{
       title.textContent = slides[current].dataset.title;
-      count.textContent = `${{current + 1}} / ${{slides.length}}`;
+      const audioLabel = slides[current].dataset.audioRunStart === 'true'
+        ? `audio ${{slides[current].dataset.audioIndex}}`
+        : `audio ${{slides[current].dataset.audioIndex}} continued`;
+      count.textContent = `${{current + 1}} / ${{slides.length}} | ${{audioLabel}}`;
       script.textContent = slides[current].dataset.script;
       playButton.textContent = playing ? 'Pause' : 'Play';
       updateScriptPosition();
@@ -174,9 +230,9 @@ def build_html(slides: list[SlideSource]) -> str:
       const video = section.querySelector('video');
       const audio = section.querySelector('audio');
       video.pause();
-      audio.pause();
+      if (audio) audio.pause();
       video.currentTime = 0;
-      audio.currentTime = 0;
+      if (audio) audio.currentTime = 0;
     }}
 
     async function playCurrent() {{
@@ -187,7 +243,7 @@ def build_html(slides: list[SlideSource]) -> str:
       await video.play().catch(() => {{}});
       audioTimer = setTimeout(async () => {{
         if (!playing || !slides[current].classList.contains('active')) return;
-        await audio.play().catch(() => {{}});
+        if (audio && audio.querySelector('source')) await audio.play().catch(() => {{}});
       }}, AUDIO_PREROLL_MS);
     }}
 
@@ -195,7 +251,7 @@ def build_html(slides: list[SlideSource]) -> str:
       const {{ video, audio }} = media();
       if (audioTimer) clearTimeout(audioTimer);
       video.pause();
-      audio.pause();
+      if (audio) audio.pause();
       playing = false;
       updateHud();
     }}
@@ -209,7 +265,7 @@ def build_html(slides: list[SlideSource]) -> str:
       }});
       const {{ video, audio }} = media();
       video.currentTime = 0;
-      audio.currentTime = 0;
+      if (audio) audio.currentTime = 0;
       updateHud();
       if (playing) playCurrent();
     }}
@@ -222,7 +278,7 @@ def build_html(slides: list[SlideSource]) -> str:
     function restart() {{
       const {{ video, audio }} = media();
       video.currentTime = 0;
-      audio.currentTime = 0;
+      if (audio) audio.currentTime = 0;
       playCurrent();
     }}
 
@@ -262,9 +318,10 @@ def build_html(slides: list[SlideSource]) -> str:
 def main() -> None:
     root = Path(__file__).resolve().parent
     slides = combine_slides(root)
+    audio_indices = sorted({slide.audio_index for slide in slides})
     missing_audio = [
         f"narration/audio/{index:03d}.wav"
-        for index in range(len(slides))
+        for index in audio_indices
         if not (root / "narration" / "audio" / f"{index:03d}.wav").exists()
     ]
     (root / OUTPUT).write_text(build_html(slides), encoding="utf-8")

@@ -7,7 +7,9 @@ import subprocess
 import wave
 from pathlib import Path
 
+from build_narrated_slides_preview import NarrationRun
 from build_narrated_slides_preview import combine_slides
+from build_narrated_slides_preview import group_narration_runs
 
 
 ROOT = Path(__file__).resolve().parent
@@ -146,6 +148,93 @@ def render_segment(
     return out_path
 
 
+def render_visual_run(ffmpeg: Path, narration_run: NarrationRun, run_index: int, width: int, height: int, fps: int) -> Path:
+    if len(narration_run.slides) == 1:
+        return ROOT / narration_run.slides[0].video
+
+    out_path = WORK_DIR / f"visual_run_{run_index:03d}.mp4"
+    input_args: list[str] = []
+    video_filters: list[str] = []
+    for local_index, slide in enumerate(narration_run.slides):
+        video_path = ROOT / slide.video
+        if not video_path.exists():
+            raise FileNotFoundError(video_path)
+        input_args.extend(["-i", str(video_path)])
+        source_seconds = video_duration(ffmpeg, video_path)
+        video_filters.append(
+            f"[{local_index}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,"
+            f"fps={fps},trim=duration={source_seconds:.3f},setpts=PTS-STARTPTS[v{local_index}]"
+        )
+
+    concat_inputs = "".join(f"[v{index}]" for index in range(len(narration_run.slides)))
+    filter_complex = ";".join(video_filters) + f";{concat_inputs}concat=n={len(narration_run.slides)}:v=1:a=0[v]"
+    run(
+        [
+            str(ffmpeg),
+            "-y",
+            *input_args,
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[v]",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(out_path),
+        ]
+    )
+    return out_path
+
+
+def render_narration_run(
+    ffmpeg: Path,
+    narration_run: NarrationRun,
+    run_index: int,
+    total_runs: int,
+    audio_shift: int,
+    pause: float,
+    audio_preroll: float,
+    width: int,
+    height: int,
+    fps: int,
+) -> Path:
+    audio_index = narration_run.audio_index + audio_shift
+    if audio_index < 0:
+        raise ValueError(f"Run {run_index}: shifted audio index {audio_index} is out of range")
+    audio_path = ROOT / "narration" / "audio" / f"{audio_index:03d}.wav"
+    if not audio_path.exists():
+        raise FileNotFoundError(audio_path)
+
+    slide_span = (
+        f"{narration_run.start_index + 1}"
+        if narration_run.start_index == narration_run.end_index
+        else f"{narration_run.start_index + 1}-{narration_run.end_index + 1}"
+    )
+    print(f"[{run_index + 1}/{total_runs}] slides {slide_span} + audio {audio_index:03d}")
+    visual_path = render_visual_run(ffmpeg, narration_run, run_index, width, height, fps)
+    return render_segment(
+        ffmpeg=ffmpeg,
+        index=run_index,
+        video_path=visual_path,
+        audio_path=audio_path,
+        loop_video=False,
+        pause=pause,
+        audio_preroll=audio_preroll,
+        width=width,
+        height=height,
+        fps=fps,
+    )
+
+
 def concat_segments(ffmpeg: Path, segments: list[Path], output: Path, width: int, height: int, fps: int) -> None:
     concat_list = WORK_DIR / "concat_segments.txt"
     concat_list.write_text(
@@ -213,36 +302,28 @@ def main() -> None:
     slides = combine_slides(ROOT)
     if args.limit is not None:
         slides = slides[: args.limit]
+    narration_runs = group_narration_runs(slides)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     WORK_DIR.mkdir(parents=True, exist_ok=True)
 
     if args.concat_only:
-        segments = [WORK_DIR / f"segment_{index:03d}.mp4" for index in range(len(slides))]
+        segments = [WORK_DIR / f"segment_{index:03d}.mp4" for index in range(len(narration_runs))]
         missing_segments = [segment for segment in segments if not segment.exists()]
         if missing_segments:
             raise FileNotFoundError(f"Missing {len(missing_segments)} segment files; rerun without --concat-only.")
     else:
+        for stale in [*WORK_DIR.glob("segment_*.mp4"), *WORK_DIR.glob("visual_run_*.mp4")]:
+            stale.unlink()
         segments = []
-        for index, slide in enumerate(slides):
-            video_path = ROOT / slide.video
-            audio_index = index if index == 0 else index + args.audio_shift
-            if audio_index < 0 or audio_index >= len(slides):
-                print(f"[{index + 1}/{len(slides)}] {slide.title} skipped: shifted audio index {audio_index} is out of range")
-                continue
-            audio_path = ROOT / "narration" / "audio" / f"{audio_index:03d}.wav"
-            if not video_path.exists():
-                raise FileNotFoundError(video_path)
-            if not audio_path.exists():
-                raise FileNotFoundError(audio_path)
-            print(f"[{index + 1}/{len(slides)}] {slide.title} + audio {audio_index:03d}")
+        for index, narration_run in enumerate(narration_runs):
             segments.append(
-                render_segment(
+                render_narration_run(
                     ffmpeg=ffmpeg,
-                    index=index,
-                    video_path=video_path,
-                    audio_path=audio_path,
-                    loop_video=slide.loop,
+                    narration_run=narration_run,
+                    run_index=index,
+                    total_runs=len(narration_runs),
+                    audio_shift=args.audio_shift,
                     pause=args.pause,
                     audio_preroll=args.audio_preroll,
                     width=args.width,
